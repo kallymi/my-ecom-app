@@ -19,6 +19,9 @@ const generateToken = (user) => {
 /* =========================
    REGISTER (avec OTP)
 ========================= */
+/* =========================
+    REGISTER (CORRIGÉ)
+========================= */
 exports.register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
@@ -27,7 +30,10 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Tous les champs sont obligatoires' });
     }
 
-    const existingUser = await User.findOne({ email });
+    // Nettoyage des données (évite les bugs mobile majuscules/espaces)
+    const cleanEmail = email.toLowerCase().trim();
+
+    const existingUser = await User.findOne({ email: cleanEmail });
     if (existingUser) {
       return res.status(400).json({ message: 'Email déjà utilisé' });
     }
@@ -37,26 +43,37 @@ exports.register = async (req, res) => {
 
     const user = await User.create({
       name,
-      email,
+      email: cleanEmail,
       password,
       isVerified: false,
       otp: hashedOtp,
-      otpExpiresAt: Date.now() + 10 * 60 * 1000 // 10 minutes
+      otpExpiresAt: Date.now() + 10 * 60 * 1000 
     });
 
-    await sendEmail({
-      to: email,
-      subject: 'Code de vérification',
-      text: `Votre code de vérification est : ${otp}`
-    });
+    // On essaie d'envoyer l'email mais on ne bloque pas si ça échoue
+    try {
+      await sendEmail({
+        to: cleanEmail,
+        subject: 'Code de vérification',
+        text: `Votre code de vérification est : ${otp}`
+      });
+    } catch (mailError) {
+      console.error("Erreur d'envoi d'email:", mailError);
+      // Optionnel : on peut informer l'utilisateur que le compte est créé 
+      // mais qu'il devra cliquer sur "Renvoyer l'OTP"
+    }
 
-    res.status(201).json({
+    // RÉPONSE SYSTÉMATIQUE
+    return res.status(201).json({
       message: 'Compte créé. Vérifiez votre email avec le code OTP.'
     });
 
   } catch (error) {
     console.error('REGISTER ERROR:', error);
-    res.status(500).json({ message: error.message });
+    // On s'assure de toujours renvoyer une réponse même en cas d'erreur crash
+    if (!res.headersSent) {
+        return res.status(500).json({ message: "Erreur lors de l'inscription" });
+    }
   }
 };
 

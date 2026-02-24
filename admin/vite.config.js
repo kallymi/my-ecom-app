@@ -8,6 +8,8 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
-    port: 5174, // PORT ADMIN DÉDIÉ
+    host: true,
+    port: 5174, 
+    historyApiFallback: true,
   },
 })

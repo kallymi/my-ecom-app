@@ -2,38 +2,28 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import api from '../api/axios';
 import { useNavigate } from 'react-router-dom';
-import { Lock, Loader2, CheckCircle } from 'lucide-react';
+import { Lock, Loader2, ArrowLeft, ShieldCheck, Eye, EyeOff } from 'lucide-react';
+import toast from 'react-hot-toast';
 
 const ChangePassword = () => {
-  const { user } = useAuth();
   const navigate = useNavigate();
-
+  const [showPass, setShowPass] = useState(false);
   const [formData, setFormData] = useState({
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
   });
+  const [loading, setLoading] = useState(false);
 
-  const [status, setStatus] = useState({
-    loading: false,
-    error: null,
-    success: false
-  });
-
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (formData.newPassword !== formData.confirmPassword) {
-      setStatus({ loading: false, error: 'Les mots de passe ne correspondent pas', success: false });
-      return;
+      return toast.error('Les mots de passe ne correspondent pas');
     }
 
-    setStatus({ loading: true, error: null, success: false });
-
+    setLoading(true);
     try {
       const res = await api.put('/users/me/password', {
         currentPassword: formData.currentPassword,
@@ -41,95 +31,104 @@ const ChangePassword = () => {
       });
 
       if (res.data.success) {
-        setStatus({ loading: false, error: null, success: true });
+        toast.success('Sécurité mise à jour !');
         setTimeout(() => navigate('/profile'), 1500);
       }
     } catch (err) {
-      setStatus({
-        loading: false,
-        error: err.response?.data?.message || 'Erreur lors du changement de mot de passe',
-        success: false
-      });
+      toast.error(err.response?.data?.message || 'Erreur de mise à jour');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-gray-50/50 py-12 px-4 animate-in slide-in-from-bottom-4 duration-500">
-      <div className="max-w-xl mx-auto">
-        <div className="bg-white rounded-[40px] shadow-2xl shadow-indigo-100/50 border border-gray-100 overflow-hidden">
-          <div className="p-8 md:p-12">
-            <h2 className="text-3xl font-black text-gray-900 mb-2">Changer le mot de passe</h2>
-            <p className="text-gray-500 font-medium mb-10">
-              Pour des raisons de sécurité, vous devez entrer votre mot de passe actuel.
-            </p>
+    <div className="min-h-screen bg-white md:bg-[#FAFAFA] pb-12">
+      {/* HEADER MOBILE MINIMALISTE */}
+      <div className="sticky top-0 z-50 bg-white/80 backdrop-blur-md px-6 py-5 flex items-center justify-between border-b border-gray-50 md:hidden">
+        <button onClick={() => navigate(-1)} className="text-black"><ArrowLeft size={22} /></button>
+        <span className="font-[1000] uppercase italic tracking-tighter text-xs">Sécurité</span>
+        <div className="w-6" />
+      </div>
 
-            {status.error && (
-              <div className="mb-6 p-4 bg-rose-50 border border-rose-100 text-rose-600 rounded-2xl font-bold text-sm">
-                {status.error}
-              </div>
-            )}
-
-            {status.success && (
-              <div className="mb-6 p-4 bg-emerald-50 border border-emerald-100 text-emerald-600 rounded-2xl font-bold text-sm flex items-center gap-2">
-                <CheckCircle size={18} />
-                Mot de passe changé avec succès !
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <InputField
-                label="Mot de passe actuel"
-                name="currentPassword"
-                type="password"
-                value={formData.currentPassword}
-                onChange={handleChange}
-                icon={<Lock size={18} />}
-              />
-              <InputField
-                label="Nouveau mot de passe"
-                name="newPassword"
-                type="password"
-                value={formData.newPassword}
-                onChange={handleChange}
-                icon={<Lock size={18} />}
-              />
-              <InputField
-                label="Confirmer le nouveau mot de passe"
-                name="confirmPassword"
-                type="password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                icon={<Lock size={18} />}
-              />
-
-              <button
-                type="submit"
-                disabled={status.loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white py-5 rounded-[24px] font-black text-lg transition-all shadow-xl shadow-indigo-200 flex items-center justify-center gap-3 mt-8"
-              >
-                {status.loading ? <Loader2 className="animate-spin" /> : <Lock size={22} />}
-                Changer le mot de passe
-              </button>
-            </form>
-          </div>
+      <div className="max-w-xl mx-auto md:pt-20 px-6">
+        {/* TITRE INTRODUCTIF */}
+        <div className="mb-12 space-y-3">
+          <h1 className="text-4xl font-[1000] tracking-tighter italic uppercase leading-none">
+            MOT DE <br /><span className="text-indigo-600">PASSE.</span>
+          </h1>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+            <ShieldCheck size={14} className="text-indigo-500" /> 
+            Protégez l'accès à votre compte
+          </p>
         </div>
+
+        {/* FORMULAIRE ÉPURÉ */}
+        <form onSubmit={handleSubmit} className="space-y-10 animate-in fade-in slide-in-from-bottom-3 duration-700">
+          <div className="space-y-8">
+            <ModernInput 
+              label="Mot de passe actuel" 
+              name="currentPassword" 
+              type={showPass ? "text" : "password"}
+              value={formData.currentPassword} 
+              onChange={handleChange}
+              toggleVisible={() => setShowPass(!showPass)}
+              showPass={showPass}
+            />
+            
+            <div className="h-[1px] w-full bg-gray-50" />
+
+            <ModernInput 
+              label="Nouveau mot de passe" 
+              name="newPassword" 
+              type={showPass ? "text" : "password"}
+              value={formData.newPassword} 
+              onChange={handleChange}
+            />
+            
+            <ModernInput 
+              label="Confirmation" 
+              name="confirmPassword" 
+              type={showPass ? "text" : "password"}
+              value={formData.confirmPassword} 
+              onChange={handleChange}
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-black text-white py-5 rounded-2xl font-[1000] uppercase text-[10px] tracking-[0.3em] transition-all active:scale-[0.98] shadow-2xl shadow-black/10 flex items-center justify-center gap-3 disabled:bg-gray-200"
+          >
+            {loading ? <Loader2 className="animate-spin" size={16} /> : <Lock size={16} />}
+            {loading ? "Traitement..." : "Mettre à jour"}
+          </button>
+        </form>
       </div>
     </div>
   );
 };
 
-const InputField = ({ label, name, type = 'text', value, onChange, icon }) => (
-  <div className="space-y-2">
-    <label className="text-xs font-black text-gray-400 uppercase tracking-widest ml-1">{label}</label>
-    <div className="relative">
-      <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">{icon}</div>
+/* COMPOSANT INPUT PREMIUM */
+const ModernInput = ({ label, toggleVisible, showPass, ...props }) => (
+  <div className="relative group">
+    <label className="text-[8px] font-black text-gray-300 uppercase tracking-[0.2em] group-focus-within:text-indigo-600 transition-colors">
+      {label}
+    </label>
+    <div className="relative flex items-center mt-1">
       <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="w-full pl-12 pr-4 py-4 rounded-2xl font-bold outline-none bg-gray-50 ring-1 ring-gray-100 focus:ring-2 focus:ring-indigo-500"
+        {...props}
+        className="w-full py-3 bg-transparent border-b border-gray-100 focus:border-indigo-600 outline-none font-bold text-base text-black transition-all placeholder:text-gray-100"
+        placeholder="••••••••"
       />
+      {toggleVisible && (
+        <button 
+          type="button"
+          onClick={toggleVisible}
+          className="absolute right-0 text-gray-300 hover:text-black transition-colors"
+        >
+          {showPass ? <EyeOff size={18} /> : <Eye size={18} />}
+        </button>
+      )}
     </div>
   </div>
 );

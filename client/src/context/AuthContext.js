@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
     };
 
     initAuth();
-  }, []);
+  }, [token]);
 
   const isAuthenticated = !!token && !!user;
 

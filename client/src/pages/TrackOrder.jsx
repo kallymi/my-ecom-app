@@ -1,25 +1,32 @@
 import React, { useState } from 'react';
 import api from '../api/axios';
-import { Package, Truck, CheckCircle, Search, MapPin, Calendar } from 'lucide-react';
+import { 
+  Package, Truck, CheckCircle, Search, MapPin, 
+  Calendar, ArrowRight, Box, Clock, ShieldCheck, 
+  Printer, Phone, XCircle, Loader2 
+} from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from './OrderSatatus';
+import { ORDER_STATUS_LABELS } from './OrderSatatus';
+import toast from 'react-hot-toast';
 
 const TrackOrder = () => {
   const [orderNumber, setOrderNumber] = useState('');
   const [phone, setPhone] = useState('');
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const handleTrack = async (e) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
     try {
-      const res = await api.get(`/orders/track/${orderNumber.toUpperCase()}?phone=${phone}`);
-      setOrder(res.data);
+      // Nettoyage de l'input et appel API
+      const cleanOrderNum = orderNumber.trim().toUpperCase();
+      const res = await api.get(`/orders/track/${cleanOrderNum}?phone=${phone.trim()}`);
+      
+      setOrder(res.data.order || res.data);
+      toast.success("Commande localisée.");
     } catch (err) {
-      setError(err.response?.data?.message || "Commande introuvable.");
+      toast.error("Commande introuvable. Vérifiez vos accès.");
       setOrder(null);
     } finally {
       setLoading(false);
@@ -30,115 +37,183 @@ const TrackOrder = () => {
   const getCurrentStep = (status) => steps.indexOf(status);
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] py-12 px-4">
-      <div className="max-w-3xl mx-auto">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-[900] tracking-tighter italic mb-4">SUIVI DE COLIS</h1>
-          <p className="text-gray-500 font-medium">Entrez vos détails pour savoir où se trouve votre commande.</p>
+    <div className="min-h-screen bg-[#FAFAFA] pb-24 pt-6 md:pt-12 px-4">
+      <div className="max-w-4xl mx-auto">
+        
+        {/* HEADER HERO - Ajusté pour mobile */}
+        <div className="text-center mb-10 md:mb-16">
+          <div className="inline-flex items-center gap-2 bg-indigo-50 text-indigo-600 text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] px-4 py-2 rounded-full mb-6">
+            <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-ping" />
+            Live System Tracking
+          </div>
+          <h1 className="text-4xl md:text-7xl font-[1000] tracking-tighter italic text-black mb-4 leading-none uppercase">
+            Suivi <span className="text-indigo-600 font-black">Colis.</span>
+          </h1>
+          <p className="text-gray-400 font-bold uppercase text-[9px] md:text-[10px] tracking-widest max-w-[250px] mx-auto opacity-60">
+            Protocole de localisation en temps réel
+          </p>
         </div>
 
-        <div className="bg-white p-8 rounded-2xl shadow-sm border mb-8">
-          <form onSubmit={handleTrack} className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+        {/* RECHERCHE - Design "Capsule" */}
+        <div className="bg-white p-2 md:p-3 rounded-[2.5rem] md:rounded-[4rem] shadow-2xl shadow-gray-200/40 border border-gray-50 mb-12 md:mb-20">
+          <form onSubmit={handleTrack} className="flex flex-col md:flex-row gap-2">
+            <div className="flex-1 flex items-center bg-gray-50 rounded-[2rem] px-6 py-4 group focus-within:bg-white focus-within:ring-2 ring-indigo-100 transition-all">
+              <Search size={18} className="text-gray-300 mr-3" />
               <input
-                placeholder="N° de Commande"
+                placeholder="N° COMMANDE"
                 value={orderNumber}
                 onChange={(e) => setOrderNumber(e.target.value)}
-                className="w-full p-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-black"
+                className="bg-transparent w-full outline-none font-black uppercase text-[11px] tracking-widest"
                 required
               />
             </div>
-            <div>
+            <div className="flex-1 flex items-center bg-gray-50 rounded-[2rem] px-6 py-4 group focus-within:bg-white focus-within:ring-2 ring-indigo-100 transition-all">
+              <Phone size={18} className="text-gray-300 mr-3" />
               <input
                 type="tel"
-                placeholder="Téléphone"
+                placeholder="TÉLÉPHONE"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full p-4 bg-gray-50 rounded-2xl border-none focus:ring-2 focus:ring-black"
+                className="bg-transparent w-full outline-none font-black text-[11px] tracking-widest"
                 required
               />
             </div>
-            <button type="submit" disabled={loading}
-              className="md:col-span-2 bg-black text-white py-5 rounded-2xl font-black uppercase hover:bg-blue-600 flex items-center justify-center gap-2">
-              {loading ? "Recherche..." : <><Search size={20} /> Suivre</>}
+            <button 
+              type="submit" 
+              disabled={loading}
+              className="bg-black text-white px-10 py-5 rounded-[2rem] font-[1000] uppercase text-[10px] tracking-[0.2em] hover:bg-indigo-600 transition-all flex items-center justify-center gap-3 disabled:bg-gray-200 active:scale-95"
+            >
+              {loading ? <Loader2 className="animate-spin" size={16} /> : "Tracer"} <ArrowRight size={16} />
             </button>
           </form>
-          {error && <p className="text-red-500 mt-4 font-bold text-center">{error}</p>}
         </div>
 
+        {/* RÉSULTATS */}
         {order && (
-          <div className="space-y-6">
-            {/* Progression */}
-            <div className="bg-white p-8 rounded-2xl shadow-sm border">
-              <div className="flex justify-between mb-8 relative">
-                <div className="absolute top-5 left-0 w-full h-1 bg-gray-100 -z-0"></div>
-                <div
-                  className="absolute top-5 left-0 h-1 bg-blue-600 transition-all duration-1000 -z-0"
-                  style={{ width: `${(getCurrentStep(order.status)/(steps.length-1))*100}%` }}
-                ></div>
+          <div className="space-y-6 md:space-y-10 animate-in fade-in slide-in-from-bottom-10 duration-700">
+            
+            {/* TIMELINE VISUELLE */}
+            <div className="bg-white p-8 md:p-16 rounded-[3rem] md:rounded-[4rem] border border-gray-50 shadow-sm relative overflow-hidden">
+              <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-10 relative z-10">
+                
+                {/* Ligne de fond (Desktop) */}
+                <div className="hidden md:block absolute top-10 left-0 w-full h-[2px] bg-gray-50">
+                    <div 
+                      className="h-full bg-indigo-600 transition-all duration-[1.5s] ease-in-out"
+                      style={{ width: `${(getCurrentStep(order.status) / (steps.length - 1)) * 100}%` }}
+                    />
+                </div>
 
                 {steps.map((step, idx) => {
                   const isActive = idx <= getCurrentStep(order.status);
                   const isCurrent = idx === getCurrentStep(order.status);
+                  
                   return (
-                    <div key={step} className="flex flex-col items-center relative z-10 w-1/4 text-center">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all
-                        ${isActive ? 'bg-blue-600 text-white shadow-lg' : 'bg-white border-4 border-gray-100 text-gray-300'}
-                        ${isCurrent ? 'ring-4 ring-blue-100 animate-pulse' : ''}`}>
-                        {idx === 0 && <Package size={18} />}
-                        {idx === 1 && <CheckCircle size={18} />}
-                        {idx === 2 && <Truck size={18} />}
-                        {idx === 3 && <CheckCircle size={18} />}
+                    <div key={step} className="flex md:flex-col items-center gap-5 md:gap-0 relative z-10 w-full md:w-1/4">
+                      <div className={`
+                        w-14 h-14 md:w-20 md:h-20 rounded-2xl md:rounded-[2.2rem] flex items-center justify-center transition-all duration-700
+                        ${isActive ? 'bg-black text-white shadow-xl shadow-indigo-100' : 'bg-gray-50 text-gray-200'}
+                        ${isCurrent ? 'ring-[6px] md:ring-8 ring-indigo-50 bg-indigo-600 scale-110' : ''}
+                      `}>
+                        {idx === 0 && <Clock size={idx === 0 && isCurrent ? 24 : 20} />}
+                        {idx === 1 && <ShieldCheck size={20} />}
+                        {idx === 2 && <Truck size={20} />}
+                        {idx === 3 && <Package size={20} />}
                       </div>
-                      <span className="mt-3 text-[10px] font-black uppercase tracking-tighter">
-                        {ORDER_STATUS_LABELS[step]}
-                      </span>
+                      <div className="md:mt-8 text-left md:text-center">
+                        <p className={`text-[9px] md:text-[10px] font-black uppercase tracking-widest ${isActive ? 'text-black' : 'text-gray-300'}`}>
+                          {ORDER_STATUS_LABELS[step] || step}
+                        </p>
+                        {isCurrent && (
+                          <span className="text-[8px] font-bold text-indigo-500 uppercase tracking-tighter md:block">Actuel</span>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
               </div>
+            </div>
 
-              <div className="grid md:grid-cols-2 gap-6 pt-6 border-t border-gray-50">
-                <div className="flex items-start gap-4">
-                  <MapPin className="p-3 bg-blue-50 text-blue-600 rounded-2xl" size={24} />
-                  <div>
-                    <p className="text-xs font-black text-gray-400 uppercase">Destination</p>
-                    <p className="font-bold text-lg">{order.shippingAddress.neighborhood}</p>
-                    <p className="text-sm text-gray-500">{order.shippingAddress.addressDetails}</p>
-                  </div>
+            {/* BENTO GRID INFOS */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+              <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-50 flex items-center gap-6">
+                <div className="w-12 h-12 md:w-14 md:h-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shrink-0">
+                  <MapPin size={22} />
                 </div>
-                <div className="flex items-start gap-4">
-                  <Calendar className="p-3 bg-green-50 text-green-600 rounded-2xl" size={24} />
-                  <div>
-                    <p className="text-xs font-black text-gray-400 uppercase">Date Commande</p>
-                    <p className="font-bold text-lg">{new Date(order.createdAt).toLocaleDateString()}</p>
-                    <p className="text-sm text-gray-500">Paiement : {order.paymentMethod}</p>
-                  </div>
+                <div>
+                  <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Destination</h4>
+                  <p className="font-black text-lg md:text-xl italic uppercase tracking-tight leading-none">{order.shippingAddress.neighborhood}</p>
+                  <p className="text-gray-400 text-[10px] font-bold mt-1 uppercase truncate max-w-[180px]">{order.shippingAddress.addressDetails}</p>
+                </div>
+              </div>
+              
+              <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-50 flex items-center gap-6">
+                <div className="w-12 h-12 md:w-14 md:h-14 bg-indigo-600 rounded-2xl flex items-center justify-center text-white shrink-0 shadow-lg shadow-indigo-100">
+                  <Calendar size={22} />
+                </div>
+                <div>
+                  <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1">Date</h4>
+                  <p className="font-black text-lg md:text-xl italic uppercase tracking-tight leading-none">
+                    {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
+                  </p>
+                  <p className="text-indigo-600 text-[10px] font-black mt-1 uppercase tracking-widest">ID: {order.orderNumber}</p>
                 </div>
               </div>
             </div>
-                
-            {/* Articles */}
-            <div className="bg-black text-white p-8 rounded-2xl shadow-xl">
-              <h3 className="font-black italic mb-6">VOTRE COLIS CONTIENT :</h3>
-              {order.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center border-b border-white/10 pb-4">
-                  <span>{item.quantity}x {item.product?.name}</span>
-                  <span>{(item.price*item.quantity).toLocaleString()} F</span>
+
+            {/* FACTURE NOIRE FUTURISTE */}
+            <div className="bg-[#050505] rounded-[3rem] md:rounded-[4rem] p-8 md:p-14 text-white shadow-2xl relative overflow-hidden group">
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-indigo-600/10 rounded-full blur-[100px] group-hover:opacity-50 transition-all" />
+              
+              <div className="relative flex justify-between items-center mb-10 md:mb-12">
+                <h3 className="text-xl md:text-2xl font-[1000] italic uppercase tracking-tighter">Votre <span className="text-indigo-500 font-black">Colis.</span></h3>
+                <Package className="text-white/10" size={32} />
+              </div>
+              
+              <div className="space-y-5 md:space-y-6 mb-10 md:mb-12 border-b border-white/5 pb-10">
+                {order.items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-white/5 px-3 py-1.5 rounded-lg text-[10px] font-black text-indigo-400">x{item.quantity}</div>
+                      <span className="font-bold text-[11px] md:text-sm uppercase tracking-wider text-gray-300 truncate max-w-[150px] md:max-w-xs">
+                        {item.product?.name || "Article Standard"}
+                      </span>
+                    </div>
+                    <span className="font-black text-sm md:text-lg italic">{item.price.toLocaleString()} F</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex flex-col md:flex-row justify-between items-end gap-6 pt-4">
+                <div>
+                  <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.3em] mb-2">Total Payé</p>
+                  <p className="text-4xl md:text-6xl font-[1000] tracking-tighter text-white uppercase italic leading-none">
+                    {order.totalAmount.toLocaleString()} <span className="text-xs md:text-sm font-black italic text-indigo-500 ml-1">CFA</span>
+                  </p>
                 </div>
-              ))}
-              <div className="mt-6 flex justify-between items-center">
-                <span className="text-gray-400 font-bold uppercase text-xs">Total réglé</span>
-                <span className="text-2xl font-black">{order.totalAmount.toLocaleString()} F</span>
+                <div className="flex items-center gap-4 bg-white/5 px-6 py-4 rounded-2xl border border-white/10 w-full md:w-auto">
+                    <div className="text-right flex-1 md:flex-none">
+                      <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Méthode</p>
+                      <p className="font-black text-[10px] uppercase tracking-tighter">{order.paymentMethod === 'COD' ? 'Cash on Delivery' : order.paymentMethod}</p>
+                    </div>
+                    <ShieldCheck size={24} className="text-indigo-500" />
+                </div>
               </div>
             </div>
 
-            <div className="flex justify-center gap-4 mt-10">
-              <Link to="/" className="bg-white border border-gray-200 px-8 py-4 rounded-2xl font-black uppercase text-xs hover:bg-black hover:text-white transition-all">
-                Accueil
-              </Link>
-              <Link to="/shop" className="bg-black text-white px-8 py-4 rounded-2xl font-black uppercase text-xs hover:bg-blue-600 transition-all">
-                Continuer mes achats
+            {/* ACTIONS */}
+            <div className="flex flex-col md:flex-row justify-center gap-4 md:gap-6 pt-6 md:pt-10">
+              <button 
+                onClick={() => window.print()}
+                className="bg-white border border-gray-100 text-black px-10 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-black hover:text-white transition-all shadow-sm flex items-center justify-center gap-2"
+              >
+                <Printer size={16} /> Imprimer
+              </button>
+              <Link 
+                to="/shop" 
+                className="bg-indigo-600 text-white px-10 py-5 rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2 shadow-xl shadow-indigo-100"
+              >
+                Boutique <ArrowRight size={16} />
               </Link>
             </div>
           </div>

@@ -3,7 +3,8 @@ import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import { 
   Package, ChevronRight, Clock, CheckCircle2, 
-  Truck, XCircle, ArrowRight, ShoppingBag 
+  Truck, XCircle, ArrowRight, ShoppingBag, 
+  RefreshCcw, AlertCircle
 } from 'lucide-react';
 import api from '../api/axios';
 
@@ -11,24 +12,24 @@ const OrderHistory = () => {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Configuration des statuts (Synchronisé avec ton Backend)
+  // Configuration des statuts enrichie
   const statusConfig = {
-    'PENDING': { label: 'En attente', color: 'bg-amber-100 text-amber-700', icon: <Clock size={14} /> },
-    'CONFIRMED': { label: 'Confirmée', color: 'bg-blue-100 text-blue-700', icon: <CheckCircle2 size={14} /> },
-    'SHIPPING': { label: 'En cours d\'envoi', color: 'bg-indigo-100 text-indigo-700', icon: <Truck size={14} /> },
-    'DELIVERED': { label: 'Livrée', color: 'bg-emerald-100 text-emerald-700', icon: <CheckCircle2 size={14} /> },
-    'CANCELLED': { label: 'Annulée', color: 'bg-rose-100 text-rose-700', icon: <XCircle size={14} /> },
+    'PENDING': { label: 'En attente', color: 'bg-amber-100 text-amber-700', icon: <Clock size={12} /> },
+    'CONFIRMED': { label: 'Confirmée', color: 'bg-blue-100 text-blue-700', icon: <CheckCircle2 size={12} /> },
+    'SHIPPING': { label: 'En cours d\'envoi', color: 'bg-indigo-100 text-indigo-700', icon: <Truck size={12} /> },
+    'DELIVERED': { label: 'Livrée', color: 'bg-emerald-100 text-emerald-700', icon: <CheckCircle2 size={12} /> },
+    'CANCELLED': { label: 'Annulée', color: 'bg-rose-100 text-rose-700', icon: <XCircle size={12} /> },
+    'RETURN_REQUESTED': { label: 'Retour demandé', color: 'bg-orange-100 text-orange-700', icon: <RefreshCcw size={12} /> },
+    'RETURNED': { label: 'Retourné', color: 'bg-gray-100 text-gray-700', icon: <AlertCircle size={12} /> },
   };
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         const { data } = await api.get('/orders/my-orders');
-        if (data.success) {
-          setOrders(data.orders);
-        }
+        if (data.success) setOrders(data.orders);
       } catch (error) {
-        console.error("Erreur API:", error.response?.data?.message || error.message);
+        console.error("Erreur API:", error.message);
       } finally {
         setLoading(false);
       }
@@ -36,187 +37,137 @@ const OrderHistory = () => {
     fetchOrders();
   }, []);
 
-  if (loading) {
-    return (
-      <div className="max-w-5xl mx-auto px-4 py-20">
-        <div className="animate-pulse space-y-8">
-          <div className="h-10 bg-gray-200 rounded-full w-48 mb-12" />
-          {[1, 2, 3].map(i => (
-            <div key={i} className="h-32 bg-gray-100 rounded-[2.5rem]" />
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  // Fonction pour calculer si le retour est encore possible (Deadline)
   const isReturnPossible = (order) => {
     if (order.status !== 'DELIVERED') return false;
     const now = new Date();
-    
-    // 1. Vérifie la deadline calculée par le backend
     const hasValidDeadline = order.items?.some(item => 
       item.returnDeadline && new Date(item.returnDeadline) > now
     );
     if (hasValidDeadline) return true;
-
-    // 2. Sécurité : si returnDeadline absente, on check deliveredAt + 7 jours
     if (order.deliveredAt) {
-      const deliveryDate = new Date(order.deliveredAt);
-      const fallbackDeadline = new Date(deliveryDate.getTime() + (7 * 24 * 60 * 60 * 1000));
+      const fallbackDeadline = new Date(new Date(order.deliveredAt).getTime() + (7 * 24 * 60 * 60 * 1000));
       return now < fallbackDeadline;
     }
     return false;
   };
 
-  // Fonction pour envoyer la demande
   const handleReturnRequest = async (orderId) => {
-    if (window.confirm("Voulez-vous vraiment demander le retour de cette commande ?")) {
-      
-      // On cree une promesse pour afficher un chargement
-      const loadingToast = toast.loading("Envoi de la demande");
-
+    if (window.confirm("Demander le retour de cette commande ?")) {
+      const loadingToast = toast.loading("Envoi de la demande...");
       try {
         await api.put(`/orders/${orderId}/request-return`);
-        
-        // Succes ! On remplace le chargement par un message de reuisste
-        
-        toast.success("Demande envoyée ! Nous l'étudions dans les plus brefs délais.", {
-          id: loadingToast,
-          duration: 5000,
-          icon: '📤',
-        });
+        toast.success("Demande envoyée !", { id: loadingToast });
+        setOrders(orders.map(o => o._id === orderId ? {...o, status: 'RETURN_REQUESTED'} : o));
       } catch (err) {
-        // Erreur !
-
-        toast.error(err.response?.data?.message || "Une erreur est survenue", {
-         id: loadingToast,
-        });
+        toast.error(err.response?.data?.message || "Erreur lors de la demande", { id: loadingToast });
       }
     }
   };
 
+  if (loading) {
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-24">
+        <div className="animate-pulse space-y-6">
+          <div className="h-10 bg-gray-100 rounded-xl w-48" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {[1, 2, 3, 4].map(i => <div key={i} className="h-32 bg-gray-50 rounded-[2rem]" />)}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#FDFDFD] pb-24 pt-12 px-4">
-      <div className="max-w-5xl mx-auto">
+    <div className="min-h-screen bg-[#FAFAFA] pb-24 pt-12 px-4">
+      <div className="max-w-6xl mx-auto">
         
-        {/* Header Hero */}
+        {/* HEADER SECTION (Affiné) */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-12 gap-6">
-          <div>
-            <span className="text-blue-600 font-black uppercase tracking-[0.3em] text-[10px] mb-2 block">
-              Espace Client
-            </span>
-            <h1 className="text-5xl font-[900] tracking-tighter italic text-black uppercase">
-              Mes <span className="text-blue-600">Commandes.</span>
+          <div className="space-y-1">
+            <span className="text-indigo-600 font-black uppercase tracking-[0.3em] text-[9px]">Espace Client</span>
+            <h1 className="text-4xl md:text-5xl font-[1000] tracking-tighter italic text-black uppercase leading-none">
+              MES <span className="text-indigo-600">COMMANDES.</span>
             </h1>
           </div>
-          <p className="text-gray-400 font-bold text-sm max-w-xs md:text-right uppercase tracking-tighter">
-            Historique de vos achats et suivi de vos colis en temps réel.
-          </p>
+          <div className="bg-white px-5 py-3 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4">
+             <div className="text-right">
+                <p className="text-[8px] font-black uppercase tracking-widest text-gray-400">Total achats</p>
+                <p className="text-xl font-[1000] italic leading-none">{orders.length}</p>
+             </div>
+             <div className="w-[1px] h-8 bg-gray-100" />
+             <ShoppingBag size={20} className="text-indigo-600" />
+          </div>
         </div>
 
         {orders.length === 0 ? (
-          <div className="bg-white rounded-[3rem] p-16 text-center border border-gray-100 shadow-2xl shadow-gray-100/50">
-            <div className="w-24 h-24 bg-gray-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 border border-gray-100">
-              <ShoppingBag className="text-gray-200" size={48} />
-            </div>
-            <h3 className="text-2xl font-[900] text-black mb-4 uppercase italic">Votre historique est vide</h3>
-            <p className="text-gray-400 mb-10 max-w-sm mx-auto font-medium">
-              Il semble que vous n'ayez pas encore passé de commande. Nos dernières collections vous attendent.
-            </p>
-            <Link 
-              to="/shop" 
-              className="inline-flex items-center gap-3 bg-black text-white px-10 py-5 rounded-2xl font-black uppercase text-xs tracking-widest hover:bg-blue-600 transition-all shadow-xl active:scale-95"
-            >
-              Découvrir la boutique
-              <ArrowRight size={18} />
+          <div className="bg-white rounded-[3rem] p-16 text-center border border-gray-100 shadow-xl shadow-gray-100/50">
+            <ShoppingBag className="text-gray-200 mx-auto mb-6" size={48} />
+            <h3 className="text-xl font-[1000] text-black mb-2 uppercase italic tracking-tighter">Votre historique est vide</h3>
+            <p className="text-gray-400 mb-8 max-w-xs mx-auto font-medium text-xs">Nos dernières collections vous attendent.</p>
+            <Link to="/shop" className="bg-black text-white px-8 py-4 rounded-xl font-black uppercase text-[9px] tracking-widest hover:bg-indigo-600 transition-all inline-flex items-center gap-2">
+              Boutique <ArrowRight size={14} />
             </Link>
           </div>
         ) : (
-          <div className="grid gap-6">
+          /* GRID SYSTEM : 1 col sur mobile, 2 col sur desktop */
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             {orders.map((order) => (
               <div 
                 key={order._id} 
-                className="group bg-white rounded-[2.5rem] border border-gray-100 p-8 hover:border-black transition-all duration-500 hover:shadow-2xl hover:shadow-gray-200/40"
+                className="bg-white rounded-[2rem] border border-gray-100 p-5 md:p-6 hover:border-indigo-500 transition-all duration-500 group relative flex flex-col justify-between"
               >
-                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-                  
-                  {/* Left: Info Commande */}
-                  <div className="flex gap-6">
-                    <div className="w-16 h-16 bg-black text-white rounded-2xl flex items-center justify-center shrink-0 shadow-lg group-hover:bg-blue-600 transition-colors">
-                      <Package size={28} />
+                <div className="flex justify-between items-start mb-4">
+                  <div className="flex gap-4">
+                    <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center text-white shrink-0 group-hover:bg-indigo-600 transition-colors shadow-lg shadow-black/5">
+                      <Package size={24} />
                     </div>
                     <div>
-                      <div className="flex flex-wrap items-center gap-3 mb-2">
-                        <span className="font-[900] text-xl tracking-tighter uppercase italic">
+                      <div className="flex flex-col mb-1">
+                        <span className="font-[1000] text-lg tracking-tighter uppercase italic leading-none">
                           #{order.orderNumber || order._id.slice(-6).toUpperCase()}
                         </span>
-                        <span className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${statusConfig[order.status]?.color || 'bg-gray-100 text-gray-600'}`}>
-                          {statusConfig[order.status]?.icon}
-                          {statusConfig[order.status]?.label || order.status}
+                        <span className="text-gray-400 text-[9px] font-bold uppercase tracking-widest mt-1">
+                          {new Date(order.createdAt).toLocaleDateString('fr-FR')}
                         </span>
                       </div>
-                      <p className="text-gray-400 text-[11px] font-black uppercase tracking-widest">
-                        Passée le {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                      </p>
                     </div>
                   </div>
+                  
+                  <div className="text-right">
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Montant</p>
+                    <p className="text-lg font-[1000] text-black tracking-tighter">
+                      {order.totalAmount?.toLocaleString()} <span className="text-[10px] text-indigo-600">F</span>
+                    </p>
+                  </div>
+                </div>
 
-                  {/* Right: Recap & Action */}
-                  <div className="flex items-center justify-between lg:justify-end gap-4 lg:gap-12 border-t lg:border-none pt-6 lg:pt-0">
-                    <div className="hidden sm:block">
-                      <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Articles</p>
-                      <p className="font-bold text-sm italic">{order.items?.length || 0} Pièce(s)</p>
-                    </div>
+                <div className="flex items-center justify-between mt-2 pt-4 border-t border-gray-50">
+                  <span className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest ${statusConfig[order.status]?.color}`}>
+                    {statusConfig[order.status]?.icon}
+                    {statusConfig[order.status]?.label}
+                  </span>
 
-                    <div className="text-left lg:text-right">
-                      <p className="text-[10px] font-black text-gray-300 uppercase tracking-widest mb-1">Montant Total</p>
-                      <p className="text-2xl font-[900] text-black tracking-tighter">
-                        {order.totalAmount?.toLocaleString()} <span className="text-xs">F</span>
-                      </p>
-                    </div>
-                    {/* Bloc à insérer juste après le Montant Total */}
-                    <div className="flex flex-col items-end gap-2">
-                      {isReturnPossible(order) && (
-                        <button
-                          onClick={() => handleReturnRequest(order._id)}
-                          className="bg-red-50 text-red-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-600 hover:text-white transition-all flex items-center gap-2"
-                        >
-                          <Clock size={12} />
-                          Demander un retour
-                        </button>
-                      )}
-
-                      {order.status === 'RETURN_REQUESTED' && (
-                        <div className="mt-4 p-4 bg-orange-50 border-l-4 border-orange-400 rounded-r-xl flex items-center gap-3">
-                          <div className="bg-orange-100 p-2 rounded-full">
-                            <Clock className="text-orange-600" size={16} />
-                          </div>
-                          <div>
-                            <p className="text-[11px] font-black text-orange-800 uppercase leading-none">Demande en cours</p>
-                            <p className="text-[10px] text-orange-600 font-medium">L'administrateur vérifie votre demande de retour.</p>
-                          </div>
-                        </div>
-                      )}
-
-                      {order.status === 'RETURNED' && (
-                        <div className="mt-4 p-4 bg-emerald-50 border-l-4 border-emerald-400 rounded-r-xl flex items-center gap-3">
-                          <div className="bg-emerald-100 p-2 rounded-full">
-                            <CheckCircle2 className="text-emerald-600" size={16} />
-                          </div>
-                          <div>
-                            <p className="text-[11px] font-black text-emerald-800 uppercase leading-none">Retour Accepté</p>
-                            <p className="text-[10px] text-emerald-600 font-medium">Votre retour a été validé. Procédure de remboursement lancée.</p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
+                  <div className="flex items-center gap-3">
+                    {/* Action de retour discrète */}
+                    {isReturnPossible(order) && (
+                      <button
+                        onClick={() => handleReturnRequest(order._id)}
+                        className="text-rose-500 hover:text-rose-700 transition-colors"
+                        title="Demander un retour"
+                      >
+                        <RefreshCcw size={16} />
+                      </button>
+                    )}
+                    
+                    {order.status === 'RETURN_REQUESTED' && (
+                       <Clock size={16} className="text-orange-400 animate-pulse" />
+                    )}
 
                     <Link 
                       to={`/order/${order._id}`}
-                      className="w-14 h-14 bg-gray-50 text-black rounded-2xl flex items-center justify-center hover:bg-black hover:text-white transition-all duration-300 active:scale-90"
+                      className="w-10 h-10 bg-gray-50 text-black rounded-xl flex items-center justify-center hover:bg-black hover:text-white transition-all active:scale-90"
                     >
-                      <ChevronRight size={24} />
+                      <ChevronRight size={20} />
                     </Link>
                   </div>
                 </div>

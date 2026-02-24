@@ -1,20 +1,4 @@
-import axios from 'axios';
-import { Beaker } from "@heroicons/react/24/outline";
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
-
-const api = axios.create({
-  baseURL: API_URL,
-  headers: { 'Content-Type': 'application/json' }
-});
-
-api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
-});
+import api from '../api/axios'; // Import de l'instance centralisée avec l'IP
 
 export const cartService = {
   getCart: async () => {
@@ -23,7 +7,6 @@ export const cartService = {
   },
 
   addToCart: async (productId, quantity, price) => {
-    // On envoie le prix au backend pour qu'il puisse valider/enregistrer le prix promo
     const res = await api.post('/cart/add', { productId, quantity, price });
     return res.data;
   },
@@ -43,10 +26,10 @@ export const cartService = {
     return res.data;
   },
 
-  getCartCount: () => {
-    api.get("/cart?count")
+  getCartCount: async () => {
+    const res = await api.get("/cart?count");
+    return res.data;
   },
-    
 
   checkout: async (orderData) => {
     const res = await api.post('/orders', orderData);

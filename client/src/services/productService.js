@@ -1,14 +1,19 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Ajoute ce log pour voir EXACTEMENT ce que React lit
+console.log("DEBUG API URL:", process.env.REACT_APP_API_URL);
+
+// On s'assure que baseURL est bien formé
+const baseURL = process.env.REACT_APP_API_URL 
+  ? process.env.REACT_APP_API_URL 
+  : 'http://172.16.29.19:5000';
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: baseURL,
   headers: {
     'Content-Type': 'application/json'
   }
 });
-
 // Intercepteur pour ajouter le token JWT
 api.interceptors.request.use(
   (config) => {
