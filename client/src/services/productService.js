@@ -1,20 +1,27 @@
 import axios from 'axios';
 
-// Ajoute ce log pour voir EXACTEMENT ce que React lit
-console.log("DEBUG API URL:", process.env.REACT_APP_API_URL);
-
-// On s'assure que baseURL est bien formé
-const baseURL = process.env.REACT_APP_API_URL 
-  ? process.env.REACT_APP_API_URL 
-  : 'http://172.16.29.19:5000';
+/**
+ * 1. CONFIGURATION DE L'URL
+ * On utilise l'IP .29.19. 
+ * Note : On ne met PAS '/api' ici si on l'ajoute plus bas dans baseURL.
+ */
+const API_URL_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
 const api = axios.create({
-  baseURL: baseURL,
+  // Ici, on s'assure que toutes les requêtes commencent par http://IP:5000/api
+  baseURL: `${API_URL_BASE}/api`,
   headers: {
     'Content-Type': 'application/json'
   }
 });
-// Intercepteur pour ajouter le token JWT
+
+// Log de contrôle pour la console F12
+console.log("📡 Mode Connexion :", API_URL_BASE + "/api");
+
+/**
+ * 2. INTERCEPTEUR JWT
+ * Ajoute automatiquement le token de sécurité à chaque requête
+ */
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -23,24 +30,26 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
+/**
+ * 3. EXPORT DES SERVICES
+ */
 export const productService = {
-  // Récupérer les produits
+  // Récupérer les produits (version courte)
   getProducts: async (params = {}) => {
     const response = await api.get('/products', { params });
     return response.data;
   },
-  // Récupérer tous les produits
+
+  // Récupérer tous les produits (avec gestion d'erreur)
   getAllProducts: async (params = {}) => {
     try {
       const response = await api.get('/products', { params });
       return response.data;
     } catch (error) {
-      console.error('Erreur récupération produits:', error);
+      console.error('❌ Erreur récupération produits:', error);
       throw error;
     }
   },
@@ -51,7 +60,7 @@ export const productService = {
       const response = await api.get(`/products/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Erreur récupération produit ${id}:`, error);
+      console.error(`❌ Erreur produit ${id}:`, error);
       throw error;
     }
   },
@@ -62,7 +71,7 @@ export const productService = {
       const response = await api.get(`/products/category/${category}`);
       return response.data;
     } catch (error) {
-      console.error(`Erreur récupération catégorie ${category}:`, error);
+      console.error(`❌ Erreur catégorie ${category}:`, error);
       throw error;
     }
   },
@@ -75,12 +84,12 @@ export const productService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Erreur recherche produits:', error);
+      console.error('❌ Erreur recherche:', error);
       throw error;
     }
   },
 
-  // Récupérer les produits populaires
+  // Produits à la une
   getFeaturedProducts: async (limit = 8) => {
     try {
       const response = await api.get('/products/featured', {
@@ -88,12 +97,12 @@ export const productService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Erreur produits populaires:', error);
+      console.error('❌ Erreur produits populaires:', error);
       throw error;
     }
   },
 
-  // Récupérer les nouvelles arrivées
+  // Nouveautés
   getNewArrivals: async (limit = 8) => {
     try {
       const response = await api.get('/products/new', {
@@ -101,8 +110,10 @@ export const productService = {
       });
       return response.data;
     } catch (error) {
-      console.error('Erreur nouvelles arrivées:', error);
+      console.error('❌ Erreur nouveautés:', error);
       throw error;
     }
   }
 };
+
+

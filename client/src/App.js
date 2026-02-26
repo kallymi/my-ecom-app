@@ -76,12 +76,13 @@ function App() {
               <Route path="/order-success/:orderNumber" element={<OrderSuccess />} />
 
               {/* Suivi des commande */}
-              <Route path="/track" element={<TrackOrder />} />
+              <Route path="/track-order" element={<TrackOrder />} />
               {/* Optionnel : accès direct via numéro de commande */}
               <Route path="/track/:orderNumber" element={<TrackOrder />} />
               
+
               {/* Confirmation de commande */}
-              <Route path="/order/:orderId" element={<OrderConfirmation />} />
+              <Route path="/order-confirmation" element={<OrderConfirmation />} />
 
               {/* Routes protégées */}
               <Route path='/my-orders' element={

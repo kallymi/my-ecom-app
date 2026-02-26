@@ -1,11 +1,16 @@
 import axios from 'axios';
 
-// 1. Nettoyage de l'URL (enlève guillemets, espaces et points-virgules accidentels)
-const rawUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// 1. Nettoyage de l'URL
+const rawUrl = process.env.REACT_APP_API_URL || 'http://172.16.28.23:5000';
 const CLEAN_URL = rawUrl.replace(/["';]/g, "").trim();
 
-// 2. Construction de l'URL de base
-const BASE_API_URL = `${CLEAN_URL}`;
+/**
+ * 2. Construction de l'URL de base avec /api
+ * On vérifie si CLEAN_URL finit déjà par /api pour ne pas le mettre deux fois
+ */
+const BASE_API_URL = CLEAN_URL.endsWith('/api') 
+  ? CLEAN_URL 
+  : `${CLEAN_URL}/api`;
 
 const api = axios.create({
   baseURL: BASE_API_URL,
@@ -13,6 +18,9 @@ const api = axios.create({
     'Content-Type': 'application/json'
   }
 });
+
+// LOG DE DEBUG : Clique sur ce lien dans ta console F12 pour vérifier s'il affiche tes produits
+console.log("🔌 Instance Axios connectée sur :", BASE_API_URL);
 
 // 3. Intercepteur pour le Token JWT
 api.interceptors.request.use(
@@ -27,3 +35,6 @@ api.interceptors.request.use(
 );
 
 export default api;
+
+
+

@@ -38,24 +38,26 @@ const statusMap = {
 };
 
 const DashboardCard = ({ title, value, icon: Icon, color, trend }) => (
-  <div className="bg-white p-5 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm border border-gray-100 hover:shadow-md transition-all">
-    <div className="flex justify-between items-start">
-      <div className="space-y-1 md:space-y-2">
-        <p className="text-[9px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest">{title}</p>
-        <h3 className="text-xl md:text-2xl font-[900] text-gray-900 tracking-tighter">{value}</h3>
-        {trend && (
-          <div className="flex items-center gap-1 text-[10px] font-bold text-emerald-500">
-            <ArrowUpRight size={12} /> {trend}%
-          </div>
-        )}
+  <div className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] shadow-sm border border-gray-100 hover:shadow-md transition-all flex flex-col justify-between min-h-[120px] md:min-h-[160px]">
+    <div className="flex justify-between items-start gap-2">
+      <div className="flex-1 min-w-0">
+        <p className="text-[8px] md:text-[10px] font-black text-gray-400 uppercase tracking-widest truncate">{title}</p>
+        <h3 className="text-lg md:text-2xl font-[900] text-gray-900 tracking-tighter break-words leading-tight">{value}</h3>
       </div>
-      <div className={`p-3 md:p-4 rounded-xl md:rounded-2xl ${color} bg-opacity-10 text-${color.split('-')[1]}-600`}>
-        <Icon size={20} className="md:w-6 md:h-6" />
+      <div className={`shrink-0 p-2.5 md:p-4 rounded-xl md:rounded-2xl ${color} bg-opacity-10 text-${color.split('-')[1]}-600`}>
+        <Icon size={18} className="md:w-6 md:h-6" />
       </div>
     </div>
+    {trend && (
+      <div className="flex items-center gap-1 text-[9px] md:text-[10px] font-black text-emerald-500 mt-2">
+        <div className="bg-emerald-500/10 p-0.5 rounded-sm">
+          <ArrowUpRight size={10} />
+        </div> 
+        {trend}% <span className="text-gray-300 font-bold ml-1 uppercase">vs mois dernier</span>
+      </div>
+    )}
   </div>
 );
-
 /* =========================
    MAIN COMPONENT
 ========================= */
@@ -187,9 +189,13 @@ export default function Dashboard() {
                   dataKey="name" 
                   axisLine={false} 
                   tickLine={false} 
-                  tick={{fontSize: 9, fontWeight: 'bold', fill: '#9ca3af'}} 
+                  tick={{fontSize: 10, fontWeight: '900', fill: '#9ca3af'}} 
                   dy={10}
-                  hide={window.innerWidth < 640} 
+                  // On cache les labels sur mobile pour éviter l'encombrement
+                  hide={typeof window !== 'undefined' && window.innerWidth < 768} 
+                />
+                <YAxis 
+                  hide={true} // Cache l'axe Y pour un look plus "dashboard moderne"
                 />
                 <Tooltip 
                   contentStyle={{borderRadius: '16px', border: 'none', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', fontSize: '12px'}} 
@@ -230,12 +236,53 @@ export default function Dashboard() {
         
         {/* TABLEAU COMMANDES - Scroll horizontal optimisé */}
         <div className="lg:col-span-2 bg-white rounded-[2rem] md:rounded-[3rem] shadow-sm border border-gray-100 overflow-hidden">
+          {/* EN-TÊTE DU BLOC */}
           <div className="p-6 md:p-8 border-b border-gray-50 flex justify-between items-center">
-            <h2 className="font-black uppercase text-[10px] md:text-xs tracking-[0.2em] text-gray-400">Commandes Récentes</h2>
-            <button onClick={() => navigate('/admin/orders')} className="text-[10px] font-black text-indigo-600 uppercase hover:underline">Voir tout</button>
+            <h2 className="font-black uppercase text-[10px] md:text-xs tracking-[0.2em] text-gray-400">
+              Commandes Récentes
+            </h2>
+            <button 
+              onClick={() => navigate('/admin/orders')} 
+              className="text-[10px] font-black text-indigo-600 uppercase hover:underline"
+            >
+              Voir tout
+            </button>
           </div>
-          <div className="overflow-x-auto overflow-y-hidden">
-            <table className="w-full min-w-[600px]">
+
+          {/* 1. VERSION MOBILE (Cartes) - Visible uniquement sur < lg */}
+          <div className="lg:hidden divide-y divide-gray-50">
+            {stats.latestOrders.map((order) => (
+              <div 
+                key={order._id} 
+                onClick={() => navigate('/admin/orders')} 
+                className="p-5 hover:bg-gray-50 active:bg-gray-100 transition-colors flex justify-between items-center"
+              >
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono font-black text-[10px] text-indigo-600">
+                      #{order._id.slice(-6).toUpperCase()}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded-full text-[7px] font-[1000] uppercase border ${statusMap[order.status] || "bg-gray-100"}`}>
+                      {order.status}
+                    </span>
+                  </div>
+                  <p className="font-black text-xs uppercase text-gray-900 truncate max-w-[140px]">
+                    {order.shippingAddress?.fullName || "Client"}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="font-[1000] text-sm text-gray-900 tracking-tighter">
+                    {Number(order.totalAmount || 0).toLocaleString()} F
+                  </p>
+                  <p className="text-[9px] text-gray-400 font-bold uppercase">Aujourd'hui</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* 2. VERSION DESKTOP (Tableau) - Masqué sur mobile, visible sur >= lg */}
+          <div className="hidden lg:block overflow-x-auto">
+            <table className="w-full">
               <thead className="bg-gray-50/50">
                 <tr className="text-[9px] uppercase text-gray-400 font-black">
                   <th className="px-6 py-4 text-left">Ref</th>
@@ -245,12 +292,22 @@ export default function Dashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {stats.latestOrders.map(order => (
-                  <tr key={order._id} className="hover:bg-gray-50/50 transition-colors group cursor-pointer" onClick={() => navigate('/admin/orders')}>
-                    <td className="px-6 py-4 font-mono font-black text-[10px] text-indigo-600">#{order._id.slice(-6).toUpperCase()}</td>
+                {stats.latestOrders.map((order) => (
+                  <tr 
+                    key={order._id} 
+                    className="hover:bg-gray-50/50 transition-colors group cursor-pointer" 
+                    onClick={() => navigate('/admin/orders')}
+                  >
+                    <td className="px-6 py-4 font-mono font-black text-[10px] text-indigo-600">
+                      #{order._id.slice(-6).toUpperCase()}
+                    </td>
                     <td className="px-6 py-4">
-                      <p className="font-black text-[10px] md:text-xs uppercase leading-tight">{order.shippingAddress?.fullName || "Anonyme"}</p>
-                      <p className="text-[9px] text-gray-400 font-bold">{order.shippingAddress?.neighborhood || "N/A"}</p>
+                      <p className="font-black text-[10px] md:text-xs uppercase leading-tight">
+                        {order.shippingAddress?.fullName || "Anonyme"}
+                      </p>
+                      <p className="text-[9px] text-gray-400 font-bold">
+                        {order.shippingAddress?.neighborhood || "N/A"}
+                      </p>
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-2.5 py-1 rounded-full text-[8px] md:text-[9px] font-black uppercase border ${statusMap[order.status] || "bg-gray-100"}`}>
@@ -259,7 +316,9 @@ export default function Dashboard() {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2 group-hover:translate-x-[-4px] transition-transform">
-                        <span className="font-black text-[10px] md:text-xs">{Number(order.totalAmount || 0 ).toLocaleString()} F</span>
+                        <span className="font-black text-[10px] md:text-xs">
+                          {Number(order.totalAmount || 0).toLocaleString()} F
+                        </span>
                         <ChevronRight size={14} className="text-gray-300" />
                       </div>
                     </td>

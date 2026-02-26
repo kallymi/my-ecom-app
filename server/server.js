@@ -61,9 +61,9 @@ const io = new Server(server, {
       "http://localhost:3000",
       "http://localhost:5173",
       "http://localhost:5174",
-      "http://172.16.29.19:3000",
-      "http://172.16.29.19:5173",
-      "http://172.16.29.19:5174",
+      "http://172.16.28.23:3000",
+      "http://172.16.28.23:5173",
+      "http://172.16.28.23:5174",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
@@ -97,9 +97,9 @@ app.use(
       "http://localhost:3000",
       "http://localhost:5173",
       "http://localhost:5174",
-      "http://172.16.29.19:3000",
-      "http://172.16.29.19:5173",
-      "http://172.16.29.19:5174",
+      "http://172.16.28.23:3000",
+      "http://172.16.28.23:5173",
+      "http://172.16.28.23:5174",
     ],
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
@@ -152,4 +152,5 @@ app.use((req, res) => {
 // --------------------------
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
+  console.log(`🌐 Accessible sur le réseau à : http://votre-ip-locale:${PORT}`);
 });

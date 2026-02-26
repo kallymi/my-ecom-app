@@ -36,7 +36,8 @@ const createOrder = asyncHandler(async (req, res) => {
     // Vérification stock & Construction items (On utilise les prix déjà gelés du panier)
     orderItems = cart.items.map(item => {
       if (item.product.stock < item.quantity) {
-        throw new Error(`Stock insuffisant pour ${item.product.name}`);
+        res.status(400);
+        throw new Error(`Stock insuffisant pour ${item.product.name} (Disponible: ${product.stock} )`);
       }
       return {
         product: item.product._id,
@@ -116,7 +117,12 @@ const createOrder = asyncHandler(async (req, res) => {
     await Cart.findOneAndUpdate({ user: req.user._id }, { $set: { items: [], totalAmount: 0, totalItems: 0 } });
   }
 
-  res.status(201).json({ success: true, order });
+  const populatedOrder = await Order.findById(order._id).populate('items.product', 'name images');
+
+  res.status(201).json({
+    success: true, 
+    order: populatedOrder
+  });
 });
 
 /* =====================================================
@@ -330,41 +336,55 @@ const getOrderCount = asyncHandler(async (req, res) => {
 });
 
 /* =====================================================
-   TRACK ORDER (PUBLIC)
+   TRACK ORDER (PUBLIC) - VERSION CORRIGÉE
 ===================================================== */
 const trackOrder = asyncHandler(async (req, res) => {
   const { orderNumber } = req.params;
   const { phone } = req.query;
 
-  // On retire tout ce qui n'est pas un chiffre pour comparer "proprement"
-  const cleanPhone = phone.replace(/\D/g, '');
-
   if (!phone) {
     res.status(400);
-    throw new Error('Numéro requis');
+    throw new Error('Numéro de téléphone requis pour le suivi');
   }
 
+  // Nettoyage du téléphone pour la recherche (on garde les derniers chiffres)
+  const cleanPhone = phone.replace(/\D/g, '');
+
+  // 1. On cherche la commande
+  // 2. On populate le produit pour avoir les images actuelles
   const order = await Order.findOne({
-    orderNumber: orderNumber.trim(),
+    orderNumber: orderNumber.trim().toUpperCase(),
     'shippingAddress.phone': { $regex: cleanPhone }
-  }).populate('items.product', 'name');
+  }).populate('items.product', 'name images'); // Ajout de 'images' ici
 
   if (!order) {
     res.status(404);
-    throw new Error('Commande introuvable');
+    throw new Error('Commande introuvable ou accès refusé');
   }
 
+  // On renvoie un objet complet mais sécurisé
   res.json({
-    orderNumber: order.orderNumber,
-    status: order.status,
-    createdAt: order.createdAt,
-    totalAmount: order.totalAmount,
-    items: order.items.map(i => ({
-      name: i.product?.name,
-      quantity: i.quantity
-    })),
-    shippingAddress: {
-      neighborhood: order.shippingAddress.neighborhood
+    success: true,
+    order: {
+      orderNumber: order.orderNumber,
+      status: order.status,
+      createdAt: order.createdAt,
+      totalAmount: order.totalAmount,
+      paymentMethod: order.paymentMethod,
+      shippingAddress: {
+        neighborhood: order.shippingAddress.neighborhood,
+        addressDetails: order.shippingAddress.addressDetails,
+        phone: order.shippingAddress.phone
+      },
+      // Ici on enrichit les items avec les images et les prix
+      items: order.items.map(i => ({
+        name: i.product?.name || i.name, // Nom du produit peuplé ou snapshot
+        quantity: i.quantity,
+        price: i.unitPrice || i.price, // Supporte tes deux formats de prix
+        // On récupère l'image soit du produit peuplé, soit du snapshot de la commande
+        image: i.product?.images?.[0]?.url || i.image,
+        product: i.product // Optionnel: utile pour les liens vers le produit
+      }))
     }
   });
 });

@@ -6,10 +6,12 @@ import {
   XCircle, 
   Package, 
   Clock, 
-  ArrowRight, 
-  AlertCircle,
-  Search,
-  RefreshCcw
+  RefreshCcw,
+  User,
+  Calendar,
+  ChevronRight,
+  ShieldCheck,
+  AlertCircle
 } from "lucide-react";
 
 const AdminReturnManagement = () => {
@@ -19,7 +21,6 @@ const AdminReturnManagement = () => {
     const fetchReturnRequests = async () => {
         try {
             setLoading(true);
-            // On filtre les commandes qui ont le statut RETURN_REQUESTED
             const { data } = await api.get('/admin/orders/returns');
             setRequests(data.orders || []);
         } catch (err) {
@@ -29,17 +30,14 @@ const AdminReturnManagement = () => {
         }
     };
 
-    useEffect(() => { 
-        fetchReturnRequests(); 
-    }, []);
+    useEffect(() => { fetchReturnRequests(); }, []);
 
     const handleAction = async (id, action) => {
-        // action peut être 'approve' ou 'reject'
         const promise = api.put(`/admin/orders/${id}/${action}-return`);
         
         await toast.promise(promise, {
-            loading: 'Mise à jour du stock et du statut...',
-            success: action === 'approve' ? 'Retour validé et stock mis à jour !' : 'Demande de retour rejetée.',
+            loading: 'Mise à jour du système...',
+            success: action === 'approve' ? 'Retour validé, stock restauré !' : 'Demande rejetée.',
             error: (err) => err.response?.data?.message || 'Erreur lors de l\'action',
         });
         
@@ -47,84 +45,98 @@ const AdminReturnManagement = () => {
     };
 
     if (loading) return (
-        <div className="flex flex-col items-center justify-center h-[60vh] gap-4">
-            <RefreshCcw className="animate-spin text-blue-600" size={32} />
-            <p className="font-black text-[10px] uppercase tracking-widest text-gray-400">Chargement des demandes...</p>
+        <div className="flex flex-col items-center justify-center h-[70vh] gap-6 transition-all animate-pulse">
+            <div className="p-5 bg-blue-50 rounded-full">
+                <RefreshCcw className="animate-spin text-blue-600" size={40} />
+            </div>
+            <p className="font-black text-[11px] uppercase tracking-[0.3em] text-blue-600/50 italic">Synchronisation de la base...</p>
         </div>
     );
 
     return (
-        <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500">
+        <div className="p-4 md:p-10 max-w-7xl mx-auto space-y-10 font-sans">
             
-            {/* Header Section */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <h1 className="text-4xl font-[1000] italic tracking-tighter uppercase">
-                        Gestion des <span className="text-blue-600">Retours.</span>
+            {/* HEADER DYNAMIQUE */}
+            <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6">
+                <div className="space-y-2">
+                    <h1 className="text-5xl md:text-6xl font-[1000] italic tracking-tighter uppercase leading-tight">
+                        Logistique <span className="text-blue-600">Retours.</span>
                     </h1>
-                    <p className="text-gray-400 font-medium text-sm">
-                        {requests.length} demande(s) en attente d'approbation.
-                    </p>
+                    <div className="flex items-center gap-4">
+                        <span className="flex items-center gap-2 px-4 py-2 bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">
+                            <AlertCircle size={14} className="text-orange-400" />
+                            {requests.length} Dossier(s) critique(s)
+                        </span>
+                    </div>
                 </div>
+                
                 <button 
                     onClick={fetchReturnRequests}
-                    className="p-3 bg-white border border-gray-100 rounded-2xl hover:bg-gray-50 transition-colors shadow-sm"
+                    className="group flex items-center gap-3 px-6 py-4 bg-white border border-gray-100 rounded-[1.5rem] hover:bg-black hover:text-white transition-all duration-500 shadow-xl shadow-black/5 active:scale-90"
                 >
-                    <RefreshCcw size={20} className="text-gray-400" />
+                    <RefreshCcw size={18} className="group-hover:rotate-180 transition-transform duration-700" />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Rafraîchir</span>
                 </button>
             </div>
 
-            {/* List Section */}
-            <div className="grid gap-6">
+            {/* LISTE DES DEMANDES */}
+            <div className="grid gap-8">
                 {requests.length === 0 ? (
-                    <div className="bg-white rounded-[3rem] p-20 text-center border border-dashed border-gray-200">
-                        <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                            <CheckCircle className="text-gray-200" size={40} />
+                    <div className="bg-white rounded-[4rem] p-24 text-center border border-gray-50 shadow-sm">
+                        <div className="w-24 h-24 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner">
+                            <ShieldCheck size={48} />
                         </div>
-                        <h3 className="text-xl font-black uppercase italic text-gray-300">Tout est à jour</h3>
-                        <p className="text-gray-400 text-sm font-medium">Aucune demande de retour n'est en attente actuellement.</p>
+                        <h3 className="text-2xl font-[1000] uppercase italic tracking-tighter text-gray-900 mb-2">Flux sécurisé</h3>
+                        <p className="text-gray-400 text-sm font-bold uppercase tracking-widest">Aucune anomalie ou demande en attente.</p>
                     </div>
                 ) : (
                     requests.map(order => (
                         <div 
                             key={order._id} 
-                            className="group bg-white rounded-[2.5rem] border border-gray-100 p-6 md:p-8 hover:border-blue-200 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-blue-900/5"
+                            className="group bg-white rounded-[2.5rem] border border-gray-100 p-2 md:p-3 hover:shadow-[0_40px_80px_-20px_rgba(0,0,0,0.06)] transition-all duration-500 overflow-hidden"
                         >
-                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-8">
+                            <div className="flex flex-col xl:flex-row items-stretch xl:items-center gap-2">
                                 
-                                {/* Info Client & Commande */}
-                                <div className="flex gap-6">
-                                    <div className="w-16 h-16 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center shrink-0">
-                                        <Package size={28} />
+                                {/* Section Gauche: Identité */}
+                                <div className="p-6 md:p-8 bg-gray-50/50 rounded-[2rem] flex items-center gap-6 min-w-[320px]">
+                                    <div className="w-16 h-16 bg-white shadow-sm border border-gray-100 rounded-2xl flex items-center justify-center shrink-0 relative">
+                                        <Package className="text-gray-900" size={28} />
+                                        <span className="absolute -top-2 -right-2 h-6 w-6 bg-orange-500 text-white text-[10px] font-black flex items-center justify-center rounded-lg animate-bounce">!</span>
                                     </div>
                                     <div>
-                                        <div className="flex items-center gap-3 mb-1">
-                                            <span className="font-black text-lg tracking-tighter uppercase italic">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <span className="font-mono font-[1000] text-xl tracking-tighter uppercase text-blue-600">
                                                 #{order.orderNumber || order._id.slice(-6).toUpperCase()}
                                             </span>
-                                            <span className="px-3 py-1 bg-orange-100 text-orange-600 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5">
-                                                <Clock size={12} /> En attente
-                                            </span>
                                         </div>
-                                        <p className="text-gray-900 font-bold text-sm uppercase">
-                                            {order.shippingAddress?.fullName || "Client Inconnu"}
-                                        </p>
-                                        <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest">
-                                            Commandé le {new Date(order.createdAt).toLocaleDateString()}
-                                        </p>
+                                        <div className="flex items-center gap-2 text-gray-500 mb-2">
+                                            <User size={12} />
+                                            <p className="text-[11px] font-black uppercase tracking-tight truncate max-w-[150px]">
+                                                {order.shippingAddress?.fullName}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-gray-400">
+                                            <Calendar size={12} />
+                                            <p className="text-[10px] font-bold uppercase tracking-widest">
+                                                {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'long' })}
+                                            </p>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Détails Articles */}
-                                <div className="flex-1 bg-gray-50/50 rounded-3xl p-4 border border-gray-100">
-                                    <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-2">Articles à retourner</p>
-                                    <div className="space-y-2">
+                                {/* Section Centrale: Articles */}
+                                <div className="flex-grow p-6 md:p-8">
+                                    <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                                        <div className="h-1 w-4 bg-orange-400 rounded-full"></div>
+                                        Contenu du retour
+                                    </h4>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {order.items.map((item, idx) => (
-                                            <div key={idx} className="flex justify-between items-center text-xs">
-                                                <span className="font-bold text-gray-700 truncate max-w-[200px]">
-                                                    {item.product?.name || "Produit"}
+                                            <div key={idx} className="flex items-center justify-between p-3 bg-white border border-gray-50 rounded-xl group-hover:border-blue-100 transition-colors">
+                                                <span className="text-xs font-bold text-gray-700 truncate pr-4 italic">
+                                                    {item.product?.name}
                                                 </span>
-                                                <span className="font-black bg-white px-2 py-0.5 rounded-lg border border-gray-100">
+                                                <span className="font-black text-[10px] bg-gray-900 text-white px-2 py-1 rounded-md">
                                                     x{item.quantity}
                                                 </span>
                                             </div>
@@ -132,32 +144,33 @@ const AdminReturnManagement = () => {
                                     </div>
                                 </div>
 
-                                {/* Actions */}
-                                <div className="flex items-center gap-3">
-                                    <div className="text-right mr-4">
-                                        <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Remboursement</p>
-                                        <p className="text-xl font-black tracking-tighter text-gray-900">
-                                            {order.totalAmount?.toLocaleString()} <span className="text-xs">F</span>
-                                        </p>
+                                {/* Section Droite: Finances & Actions */}
+                                <div className="p-6 md:p-8 flex flex-row xl:flex-col items-center xl:items-end justify-between xl:justify-center gap-6 border-t xl:border-t-0 xl:border-l border-gray-100 min-w-[280px]">
+                                    <div className="text-left xl:text-right">
+                                        <p className="text-[9px] font-[1000] text-gray-400 uppercase tracking-widest mb-1">Montant Remboursable</p>
+                                        <h3 className="text-3xl font-[1000] tracking-tighter text-gray-900 leading-none">
+                                            {order.totalAmount?.toLocaleString()} <span className="text-sm italic">CFA</span>
+                                        </h3>
                                     </div>
-                                    
-                                    <div className="flex gap-2">
+
+                                    <div className="flex gap-3">
                                         <button 
                                             onClick={() => handleAction(order._id, 'reject')}
-                                            className="h-14 w-14 bg-gray-100 text-gray-400 rounded-2xl flex items-center justify-center hover:bg-rose-50 hover:text-rose-600 transition-all active:scale-90"
-                                            title="Refuser le retour"
+                                            className="h-14 w-14 border-2 border-gray-100 text-gray-400 rounded-2xl flex items-center justify-center hover:bg-rose-50 hover:border-rose-100 hover:text-rose-600 transition-all active:scale-90 group/btn"
+                                            title="Rejeter la demande"
                                         >
-                                            <XCircle size={24} />
+                                            <XCircle size={24} className="group-hover/btn:rotate-90 transition-transform" />
                                         </button>
                                         <button 
                                             onClick={() => handleAction(order._id, 'approve')}
-                                            className="h-14 px-6 bg-emerald-500 text-white rounded-2xl flex items-center justify-center gap-2 hover:bg-emerald-600 transition-all shadow-lg shadow-emerald-200 active:scale-95"
+                                            className="h-14 px-8 bg-black text-white rounded-2xl flex items-center justify-center gap-3 hover:bg-blue-600 transition-all shadow-2xl shadow-black/10 active:scale-95 group/btn"
                                         >
-                                            <CheckCircle size={20} />
-                                            <span className="font-black text-xs uppercase tracking-widest">Approuver</span>
+                                            <CheckCircle size={20} className="text-emerald-400" />
+                                            <span className="font-black text-[10px] uppercase tracking-widest">Valider & Restocker</span>
                                         </button>
                                     </div>
                                 </div>
+
                             </div>
                         </div>
                     ))

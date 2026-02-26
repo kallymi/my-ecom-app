@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import api from '../api/axios';
 import { 
   Package, Truck, CheckCircle, Search, MapPin, 
   Calendar, ArrowRight, Box, Clock, ShieldCheck, 
   Printer, Phone, XCircle, Loader2 
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ORDER_STATUS_LABELS } from './OrderSatatus';
 import toast from 'react-hot-toast';
 
@@ -14,6 +14,33 @@ const TrackOrder = () => {
   const [phone, setPhone] = useState('');
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const location = useLocation()
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const orderParam = params.get('order');
+    const phoneParam = params.get('phone');
+
+    if (orderParam && phoneParam) {
+      setOrderNumber(orderParam);
+      setPhone(phoneParam);
+      // On peut appeler directement handleTrack ou une version simplifiée
+      const fetchOrder = async () => {
+        setLoading(true);
+        try {
+          const res = await api.get(`/orders/track/${orderParam.trim().toUpperCase()}?phone=${phoneParam.trim()}`);
+          console.log("Données reçues :", res.data.order);
+          setOrder(res.data.order || res.data);
+        } catch (err) {
+          console.error("Erreur tracking auto", err);
+        } finally {
+          setLoading(false);
+        }
+      };
+      fetchOrder();
+    }
+  }, [location]);
 
   const handleTrack = async (e) => {
     e.preventDefault();
@@ -171,30 +198,64 @@ const TrackOrder = () => {
               </div>
               
               <div className="space-y-5 md:space-y-6 mb-10 md:mb-12 border-b border-white/5 pb-10">
-                {order.items.map((item, idx) => (
-                  <div key={idx} className="flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                      <div className="bg-white/5 px-3 py-1.5 rounded-lg text-[10px] font-black text-indigo-400">x{item.quantity}</div>
-                      <span className="font-bold text-[11px] md:text-sm uppercase tracking-wider text-gray-300 truncate max-w-[150px] md:max-w-xs">
-                        {item.product?.name || "Article Standard"}
-                      </span>
+                {order.items.map((item, idx) => {
+                  // 🛡️ Logique de récupération de l'image et du prix
+                  const displayPrice = item.price || item.unitPrice || 0;
+                  
+                  // On récupère l'image : soit dans le produit peuplé, soit dans le snapshot image du controller
+                  const itemImage = item.product?.images?.[0]?.url || item.product?.image || item.image || 'https://via.placeholder.com/150';
+                  const itemName = item.product?.name || item.name || "Article Standard";
+
+                  return (
+                    <div key={idx} className="flex justify-between items-center group">
+                      <div className="flex items-center gap-4">
+                        {/* VIGNETTE IMAGE */}
+                        <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden border border-white/10 bg-white/5 shrink-0">
+                          <img 
+                            src={itemImage} 
+                            alt={itemName}
+                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                            onError={(e) => { e.target.src = 'https://via.placeholder.com/150'; }}
+                          />
+                          <div className="absolute top-0 right-0 bg-indigo-600 text-[8px] font-[1000] px-1.5 py-0.5 rounded-bl-lg">
+                            x{item.quantity || 1}
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col">
+                          <span className="font-bold text-[11px] md:text-sm uppercase tracking-wider text-gray-100 truncate max-w-[120px] md:max-w-xs leading-tight">
+                            {itemName}
+                          </span>
+                          <span className="text-[9px] text-indigo-400/60 font-black uppercase tracking-widest mt-0.5">
+                            Réf: {item.product?._id?.substring(0, 6) || 'N/A'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="font-black text-sm md:text-lg italic text-white block">
+                          {Number(displayPrice * (item.quantity || 1)).toLocaleString()} F
+                        </span>
+                        <span className="text-[9px] text-gray-500 font-bold uppercase">
+                          {Number(displayPrice).toLocaleString()} F / unité
+                        </span>
+                      </div>
                     </div>
-                    <span className="font-black text-sm md:text-lg italic">{item.price.toLocaleString()} F</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
 
               <div className="flex flex-col md:flex-row justify-between items-end gap-6 pt-4">
                 <div>
                   <p className="text-[9px] font-black text-gray-500 uppercase tracking-[0.3em] mb-2">Total Payé</p>
                   <p className="text-4xl md:text-6xl font-[1000] tracking-tighter text-white uppercase italic leading-none">
-                    {order.totalAmount.toLocaleString()} <span className="text-xs md:text-sm font-black italic text-indigo-500 ml-1">CFA</span>
+                    {(order.totalAmount || 0 ).toLocaleString()} <span className="text-xs md:text-sm font-black italic text-indigo-500 ml-1">CFA</span>
                   </p>
                 </div>
                 <div className="flex items-center gap-4 bg-white/5 px-6 py-4 rounded-2xl border border-white/10 w-full md:w-auto">
                     <div className="text-right flex-1 md:flex-none">
-                      <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Méthode</p>
-                      <p className="font-black text-[10px] uppercase tracking-tighter">{order.paymentMethod === 'COD' ? 'Cash on Delivery' : order.paymentMethod}</p>
+                      <p className="text-[8px] font-black text-gray-500 uppercase tracking-widest leading-none mb-1">Méthode de paiement </p>
+                      <p className="font-black text-[10px] uppercase tracking-tighter">{order.paymentMethod === 'COD' ? 'Paiement a la livraison' : order.paymentMethod}</p>
                     </div>
                     <ShieldCheck size={24} className="text-indigo-500" />
                 </div>

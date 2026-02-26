@@ -1,12 +1,19 @@
 import React, { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import axios from "axios";
-import { ShieldCheck, RefreshCcw, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from "lucide-react";
+import { 
+  ShieldCheck, 
+  RefreshCcw, 
+  ArrowRight, 
+  Loader2, 
+  AlertCircle, 
+  CheckCircle2,
+  Sparkles 
+} from "lucide-react";
 
 const VerifyOtp = () => {
   const navigate = useNavigate();
   const location = useLocation();
-
   const email = location.state?.email || "";
 
   const [otp, setOtp] = useState("");
@@ -30,9 +37,8 @@ const VerifyOtp = () => {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
 
-      setSuccess("Compte vérifié avec succès");
-      setTimeout(() => navigate("/"), 1200);
-
+      setSuccess("Compte vérifié !");
+      setTimeout(() => navigate("/"), 1500);
     } catch (err) {
       setError(err.response?.data?.message || "Code OTP invalide ou expiré");
     } finally {
@@ -60,15 +66,18 @@ const VerifyOtp = () => {
 
   if (!email) {
     return (
-      <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-4">
-        <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-gray-100 text-center max-w-md">
-          <AlertCircle className="text-rose-500 mx-auto mb-4" size={48} />
-          <p className="font-black uppercase tracking-widest text-xs text-gray-400 mb-6">Email manquant</p>
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6">
+        <div className="bg-white/80 backdrop-blur-xl p-10 rounded-[3.5rem] shadow-2xl border border-white text-center max-w-md animate-in fade-in zoom-in">
+          <div className="w-20 h-20 bg-red-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="text-red-500" size={40} />
+          </div>
+          <h2 className="text-2xl font-[1000] italic uppercase tracking-tighter mb-2">Oups !</h2>
+          <p className="font-bold text-[10px] uppercase tracking-widest text-gray-400 mb-8 px-4">Email manquant. Relancez l'inscription.</p>
           <button 
             onClick={() => navigate("/register")}
-            className="w-full bg-black text-white py-5 rounded-[2rem] font-black uppercase text-[10px] tracking-widest hover:bg-blue-600 transition-all"
+            className="w-full bg-black text-white py-5 rounded-[2.2rem] font-black uppercase text-[11px] tracking-widest hover:bg-blue-600 transition-all shadow-xl shadow-black/10"
           >
-            Retour à l'inscription
+            Retourner à l'inscription
           </button>
         </div>
       </div>
@@ -76,51 +85,58 @@ const VerifyOtp = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex items-center justify-center p-4">
-      <div className="w-full max-w-[480px]">
+    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 relative overflow-hidden">
+      
+      {/* Background Orbs */}
+      <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] bg-emerald-100/30 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] right-[-5%] w-[50%] h-[50%] bg-teal-100/30 rounded-full blur-[120px] pointer-events-none" />
+
+      <div className="w-full max-w-[460px] relative z-10">
         
         {/* Header */}
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-emerald-500 rounded-[2rem] mb-6 shadow-xl shadow-emerald-100">
-            <ShieldCheck className="text-white" size={28} />
+        <div className="text-center mb-8">
+          <div className="relative inline-flex mb-6 group">
+            <div className="absolute inset-0 bg-emerald-500 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" />
+            <div className="relative w-16 h-16 bg-emerald-500 rounded-[1.8rem] flex items-center justify-center shadow-2xl shadow-emerald-200/50">
+              <ShieldCheck className="text-white" size={28} />
+            </div>
           </div>
-          <h1 className="text-4xl font-[900] tracking-tighter italic text-black uppercase mb-2">
-            Vérifier le <span className="text-emerald-500">Compte.</span>
+          <h1 className="text-4xl md:text-5xl font-[1000] tracking-tighter italic text-black uppercase leading-[0.9]">
+            Vérifier le <br /> <span className="text-emerald-500">Compte.</span>
           </h1>
-          <p className="text-gray-400 font-medium text-sm leading-relaxed max-w-[280px] mx-auto">
-            Nous avons envoyé un code de sécurité à : <br/>
-            <span className="text-black font-black lowercase">{email}</span>
+          <p className="mt-4 text-gray-400 font-bold text-[9px] uppercase tracking-[0.25em] leading-relaxed max-w-[300px] mx-auto">
+            Code envoyé sur <span className="text-black">{email}</span>
           </p>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-white p-8 md:p-10 rounded-[3rem] shadow-2xl shadow-gray-200/50 border border-gray-100">
+        {/* Card */}
+        <div className="bg-white/80 backdrop-blur-xl p-8 md:p-10 rounded-[3.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-white/50">
           
           {error && (
-            <div className="mb-6 flex items-center gap-3 bg-rose-50 border border-rose-100 p-4 rounded-2xl text-rose-600 animate-in fade-in zoom-in">
+            <div className="mb-6 flex items-center gap-3 bg-red-50 border border-red-100 p-4 rounded-2xl text-red-600 animate-in fade-in slide-in-from-top-2">
               <AlertCircle size={18} className="shrink-0" />
-              <p className="text-[10px] font-black uppercase tracking-widest">{error}</p>
+              <p className="text-[10px] font-black uppercase tracking-widest leading-tight">{error}</p>
             </div>
           )}
 
           {success && (
             <div className="mb-6 flex items-center gap-3 bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-emerald-600 animate-in fade-in zoom-in">
               <CheckCircle2 size={18} className="shrink-0" />
-              <p className="text-[10px] font-black uppercase tracking-widest">{success}</p>
+              <p className="text-[10px] font-black uppercase tracking-widest leading-tight">{success}</p>
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="space-y-3 text-center">
-              <label className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-300">
-                Code de vérification
+              <label className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400">
+                Code de sécurité
               </label>
               <input
                 type="text"
                 maxLength="6"
                 value={otp}
                 onChange={(e) => setOtp(e.target.value)}
-                className="block w-full text-center py-6 bg-gray-50 border-2 border-transparent rounded-[2rem] text-3xl font-black tracking-[0.5em] focus:bg-white focus:border-emerald-500 focus:outline-none transition-all placeholder:text-gray-200"
+                className="block w-full text-center py-6 bg-gray-50/50 border-2 border-transparent rounded-[2.2rem] text-4xl font-black tracking-[0.4em] focus:bg-white focus:border-emerald-100 focus:outline-none transition-all placeholder:text-gray-200"
                 placeholder="000000"
                 required
               />
@@ -129,28 +145,32 @@ const VerifyOtp = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-black text-white py-5 rounded-[2rem] font-black uppercase text-xs tracking-[0.2em] shadow-xl shadow-black/20 hover:bg-emerald-600 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-3 disabled:bg-gray-200"
+              className="group w-full bg-black text-white py-5 rounded-[2.2rem] font-black uppercase text-[11px] tracking-[0.25em] shadow-xl shadow-black/10 hover:bg-emerald-600 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:bg-gray-100"
             >
-              {loading ? <Loader2 className="animate-spin" size={20} /> : <>Confirmer <ArrowRight size={18} /></>}
+              {loading ? <Loader2 className="animate-spin" size={20} /> : <>Vérifier maintenant <Sparkles size={16} /></>}
             </button>
           </form>
 
-          {/* Resend Action */}
-          <div className="mt-8 pt-6 border-t border-gray-50 flex flex-col items-center">
-            <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest mb-3">Rien reçu ?</p>
+          {/* Resend Section */}
+          <div className="mt-10 pt-8 border-t border-gray-100/50 flex flex-col items-center">
+            <p className="text-gray-400 text-[9px] font-black uppercase tracking-widest mb-4">Rien reçu ?</p>
             <button 
               onClick={handleResendOtp}
               disabled={loading}
-              className="flex items-center gap-2 text-black hover:text-emerald-500 font-black text-xs uppercase tracking-widest transition-colors group"
+              className="flex items-center gap-2 text-black hover:text-emerald-500 font-black text-[10px] uppercase tracking-widest transition-all group"
             >
-              <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-500" />
-              Renvoyer un nouveau code
+              <RefreshCcw size={14} className="group-hover:rotate-180 transition-transform duration-700" />
+              Renvoyer un code
             </button>
           </div>
         </div>
 
-        <div className="text-center mt-10">
-          <button onClick={() => navigate("/login")} className="text-gray-400 text-xs font-bold uppercase tracking-widest hover:text-black transition-colors">
+        {/* Back Link */}
+        <div className="text-center mt-8">
+          <button 
+            onClick={() => navigate("/login")} 
+            className="text-gray-400 hover:text-black transition-colors text-[10px] font-black uppercase tracking-[0.2em] border-b-2 border-transparent hover:border-black/10 pb-1"
+          >
             Annuler et revenir
           </button>
         </div>

@@ -1,5 +1,6 @@
 import { createContext, useState, useContext } from "react";
 import axios from "axios";
+import api from "../api/axios";
 import { useEffect } from "react";
 
 export const AuthContext = createContext();
@@ -42,21 +43,26 @@ export const AuthProvider = ({ children }) => {
       setLoading(true);
       setError(null);
 
-      const res = await axios.post(
-        "http://localhost:5000/api/auth/login",
-        credentials
-      );
+      // NETTOYAGE SÉCURITÉ MOBILE
+      const cleanCredentials = {
+        email: credentials.email.trim().toLowerCase(),
+        password: credentials.password.trim()
+      };
+
+      // UTILISATION DE L'INSTANCE AXIOS (avec l'IP au lieu de localhost)
+      const res = await api.post("/auth/login", cleanCredentials);
 
       const { token: newToken } = res.data;
-
       setToken(newToken);
       localStorage.setItem("token", newToken);
-
-      // 🔥 TOUJOURS recharger le profil réel
       await refreshUser(newToken);
 
     } catch (err) {
-      setError(err.response?.data?.message || "Identifiants incorrects");
+      // Amélioration du message d'erreur pour le debug
+      const message = err.response 
+        ? err.response.data?.message 
+        : "Problème de connexion au serveur (Vérifiez l'IP)";
+      setError(message);
       throw err;
     } finally {
       setLoading(false);

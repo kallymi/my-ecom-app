@@ -50,137 +50,99 @@ const OrderCard = ({ order, onRefresh }) => {
   };
 
   return (
-    <div className="bg-white p-6 md:p-8 rounded-[2.5rem] border border-gray-100 hover:border-indigo-600 transition-all duration-500 group relative overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-indigo-100/50">
+    <div className="bg-white p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] border border-gray-100 hover:border-indigo-600 transition-all duration-500 group relative overflow-hidden shadow-sm hover:shadow-xl">
       
-      {/* HEADER DE LA CARTE */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 relative z-10">
+      {/* HEADER : On utilise flex-row même sur mobile pour gagner de la hauteur */}
+      <div className="flex items-center justify-between gap-3 relative z-10">
         
-        {/* INFOS PRODUIT & NUMÉRO */}
-        <div className="flex items-center gap-5">
+        {/* Zone Gauche : Image & ID */}
+        <div className="flex items-center gap-3 min-w-0">
           <div className="relative shrink-0">
-            <div className="w-20 h-20 bg-gray-50 rounded-[1.5rem] overflow-hidden border border-gray-100">
+            <div className="w-14 h-14 md:w-20 md:h-20 bg-gray-50 rounded-xl md:rounded-[1.5rem] overflow-hidden border border-gray-100">
               <img 
-                src={getMainImage(firstItem)} 
-                alt="order-thumb" 
+                src={getMainImage(order.items?.[0]?.product)} 
+                alt="thumb" 
                 className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
               />
             </div>
             {order.items?.length > 1 && (
-              <span className="absolute -top-2 -right-2 bg-indigo-600 text-white text-[9px] font-[1000] w-6 h-6 rounded-full flex items-center justify-center ring-4 ring-white shadow-lg">
+              <span className="absolute -top-1.5 -right-1.5 bg-indigo-600 text-white text-[8px] font-[1000] w-5 h-5 rounded-full flex items-center justify-center ring-2 ring-white shadow-md">
                 +{order.items.length - 1}
               </span>
             )}
           </div>
 
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <Package size={12} className="text-indigo-600" />
-              <p className="text-[11px] font-[1000] text-black uppercase tracking-tighter font-mono">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 mb-0.5">
+              <p className="text-[10px] md:text-[11px] font-black text-black uppercase font-mono truncate">
                 #{order.orderNumber}
               </p>
             </div>
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none">
-              Passée le {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' })}
+            <p className="text-[8px] md:text-[10px] text-gray-400 font-bold uppercase tracking-tight">
+              {new Date(order.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' })}
             </p>
           </div>
         </div>
 
-        {/* MONTANT TOTAL */}
-        <div className="flex flex-col md:items-end">
-          <p className="text-[9px] font-[1000] text-gray-400 uppercase tracking-[0.2em] mb-1">Total payé</p>
-          <span className="text-2xl font-[1000] text-black tracking-tighter leading-none italic">
+        {/* Zone Droite : Prix & Status (Plus compact) */}
+        <div className="flex flex-col items-end shrink-0">
+           <span className="text-sm md:text-xl font-[1000] text-black tracking-tighter italic">
             {Number(order?.totalAmount || 0).toLocaleString()} 
-            <small className="ml-1 text-[10px] not-italic text-indigo-600">FCFA</small>
+            <small className="ml-0.5 text-[8px] not-italic text-indigo-600 uppercase">F</small>
           </span>
-        </div>
-
-        {/* STATUT ET LIEN */}
-        <div className="flex items-center gap-4 border-t md:border-t-0 pt-5 md:pt-0">
           <div 
-            className="px-5 py-2.5 rounded-full text-[9px] font-[1000] uppercase tracking-widest text-white shadow-lg shadow-indigo-100 flex items-center gap-2"
+            className="mt-1.5 px-3 py-1 md:px-5 md:py-2 rounded-full text-[7px] md:text-[9px] font-black uppercase tracking-wider text-white flex items-center gap-1.5"
             style={{ backgroundColor: ORDER_STATUS_COLORS[order.status] || "#000000" }}
           >
-            <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+            <div className="w-1 h-1 bg-white rounded-full animate-pulse" />
             {ORDER_STATUS_LABELS[order.status] || order.status}
           </div>
-          <Link
-            to={`/order/${order._id}`}
-            className="w-12 h-12 bg-black text-white rounded-[1.2rem] flex items-center justify-center hover:bg-indigo-600 transition-all active:scale-90 shadow-xl"
-          >
-            <ChevronRight size={20} />
-          </Link>
         </div>
       </div>
 
-      {/* --- BLOCS D'ACTIONS ÉTENDUS --- */}
-
-      {/* RAPPROCHEMENT DU CYCLE DE RETOUR */}
-      {order.status === 'DELIVERED' && (
-        <div className="mt-8 pt-6 border-t border-dashed border-gray-100 flex items-center justify-between">
-          <div className="flex items-center gap-2 text-emerald-600">
-            <ShieldCheck size={14} />
-            <span className="text-[9px] font-black uppercase tracking-widest">Livraison Certifiée</span>
-          </div>
-          {isReturnPossible() ? (
-            <button
-              onClick={handleReturnRequest}
-              className="flex items-center gap-2 text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white px-5 py-2.5 rounded-xl text-[9px] font-[1000] uppercase tracking-[0.1em] transition-all active:scale-95"
+      {/* FOOTER ACTIONS : Plus discret */}
+      <div className="mt-4 pt-3 border-t border-gray-50 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+           {order.status === 'DELIVERED' && (
+             <div className="flex items-center gap-1 text-emerald-500">
+               <ShieldCheck size={12} />
+               <span className="text-[8px] font-black uppercase tracking-tighter hidden sm:block">Certifiée</span>
+             </div>
+           )}
+           <Link
+              to={`/order/${order._id}`}
+              className="text-[9px] font-black text-indigo-600 uppercase hover:text-black transition-colors"
             >
-              <RotateCcw className="h-3.5 w-3.5" />
-              Initialiser un retour
-            </button>
-          ) : (
-            <div className="flex items-center gap-2 text-gray-300">
-              <Clock size={12} />
-              <span className="text-[9px] uppercase font-[1000] tracking-widest italic">
-                Délai de retour expiré
-              </span>
-            </div>
-          )}
+              Détails commande →
+            </Link>
         </div>
-      )}
 
-      {/* RETOUR EN COURS D'EXAMEN */}
+        {/* Boutons d'actions conditionnels (Version compacte) */}
+        {order.status === 'DELIVERED' && isReturnPossible() && (
+          <button
+            onClick={handleReturnRequest}
+            className="text-rose-500 bg-rose-50 hover:bg-rose-500 hover:text-white px-3 py-1.5 rounded-lg text-[8px] font-black uppercase transition-all"
+          >
+            Retourner
+          </button>
+        )}
+
+        {order.status === 'RETURNED' && (
+          <button
+            onClick={handleConfirmReturn}
+            className="bg-black text-white px-4 py-2 rounded-lg text-[8px] font-black uppercase tracking-widest active:scale-95 transition-all"
+          >
+            Clôturer
+          </button>
+        )}
+      </div>
+
+      {/* Message discret pour RETURN_REQUESTED */}
       {order.status === 'RETURN_REQUESTED' && (
-        <div className="mt-8 p-4 bg-amber-50 rounded-2xl border border-amber-100/50 flex items-center justify-center gap-3">
-          <div className="w-2 h-2 bg-amber-400 rounded-full animate-ping" />
-          <p className="text-[10px] font-black text-amber-700 uppercase tracking-[0.1em]">
-            Dossier en cours d'examen par notre service logistique
+        <div className="mt-3 text-center py-2 bg-amber-50 rounded-xl border border-amber-100">
+          <p className="text-[8px] font-black text-amber-700 uppercase tracking-tight">
+            Examen logistique en cours...
           </p>
-        </div>
-      )}
-
-      {/* CONFIRMATION DE REMBOURSEMENT */}
-      {order.status === 'RETURNED' && (
-        <div className="mt-8 pt-6 border-t border-dashed border-gray-100">
-          <div className="bg-indigo-50 p-6 rounded-[1.8rem] flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm">
-                <RotateCcw size={20} />
-              </div>
-              <div>
-                <p className="text-[10px] font-[1000] text-indigo-900 uppercase leading-none mb-1">Retour Validé</p>
-                <p className="text-[11px] font-bold text-indigo-600/70 italic">Avez-vous reçu vos fonds ?</p>
-              </div>
-            </div>
-            <button
-              onClick={handleConfirmReturn}
-              className="w-full md:w-auto bg-black hover:bg-indigo-600 text-white px-8 py-4 rounded-2xl text-[10px] font-[1000] uppercase tracking-[0.2em] transition-all shadow-xl active:scale-95 flex items-center justify-center gap-2"
-            >
-              <BadgeCheck size={16} />
-              Confirmer la Clôture
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* ÉTAT FINAL : RETOUR COMPLÉTÉ */}
-      {order.status === 'RETURNED_COMPLETED' && (
-        <div className="mt-6 flex items-center justify-center gap-3 py-2 px-4 bg-gray-50 rounded-full w-fit mx-auto">
-          <BadgeCheck size={14} className="text-gray-400" />
-          <span className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400">
-            Dossier archivé • {new Date(order.updatedAt).toLocaleDateString('fr-FR')}
-          </span>
         </div>
       )}
     </div>
