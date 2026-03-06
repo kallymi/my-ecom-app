@@ -54,52 +54,30 @@ const getUsers = asyncHandler(async (req, res) => {
 // @route   PUT /api/admin/users/:id
 // @access  Private/Admin
 
+// Version optimisée de updateUser
 const updateUser = asyncHandler(async (req, res) => {
-  try {
-    const { name, email, role, isBlocked } = req.body;
-    const user = await User.findById(req.params.id);
+  const { name, email, role, isBlocked } = req.body;
+  
+  // Utilise un objet de mise à jour propre
+  const updateData = { name, email };
+  
+  // N'ajoute les champs sensibles que si nécessaire
+  if (role) updateData.role = role;
+  if (isBlocked !== undefined) updateData.isBlocked = isBlocked;
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'Utilisateur non trouvé' });
-    }
+  const updatedUser = await User.findByIdAndUpdate(
+    req.params.id,
+    { $set: updateData },
+    { new: true, runValidators: true }
+  ).select('-password');
 
-    // Sécurité : Un admin ne peut pas se bloquer lui-même ou changer son propre rôle ici
-    const isSelf = user._id.toString() === req.user._id.toString();
-
-    // Mise à jour des champs (on ne change le rôle/blocage que si ce n'est pas soi-même)
-    user.name = name || user.name;
-    user.email = email || user.email;
-    
-    if (!isSelf) {
-      if (role) user.role = role;
-      if (typeof isBlocked !== 'undefined') user.isBlocked = isBlocked;
-    }
-
-    // Utilisation de findByIdAndUpdate pour bypasser les validateurs de champs non envoyés (comme password)
-    const updatedUser = await User.findByIdAndUpdate(
-      req.params.id,
-      { 
-        name: user.name, 
-        email: user.email, 
-        role: user.role, 
-        isBlocked: user.isBlocked 
-      },
-      { new: true, runValidators: true }
-    ).select('-password');
-
-    res.json({
-      success: true,
-      user: updatedUser
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: 'Erreur de mise à jour',
-      error: error.message
-    });
+  if (!updatedUser) {
+    res.status(404);
+    throw new Error('Utilisateur non trouvé');
   }
-});
 
+  res.json({ success: true, user: updatedUser });
+});
 
 // @desc    Modifier le rôle d’un utilisateur
 // @route   PUT /api/admin/users/:id/role

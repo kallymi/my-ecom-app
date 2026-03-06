@@ -39,7 +39,8 @@ const {
   updateOrderStatus,
   getReturnOrders,
   approveOrderReturn,
-  rejectOrderReturn
+  rejectOrderReturn,
+  getRevenueAnalytics
 } = require("../controllers/admin/adminOrderController");
 const { getCategories, createCategory, updateCategory, deleteCategory } = require('../controllers/admin/adminCategoryController');
 
@@ -77,6 +78,7 @@ router.route('/products/:id/promotion')
 
 
 // --- COMMANDES ---
+router.get('/orders/analytics', protect, admin, getRevenueAnalytics);
 router.get('/orders', protect, admin, getOrders);
 router.put('/orders/:id/status', protect, admin, updateOrderStatus);
 

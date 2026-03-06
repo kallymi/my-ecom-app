@@ -1,10 +1,20 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { Lock, Mail, Loader2, Sparkles, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
+import { 
+  Lock, 
+  Mail, 
+  Loader2, 
+  AlertCircle, 
+  Eye, 
+  EyeOff, 
+  ChevronLeft,
+  ArrowRight,
+  ShieldCheck 
+} from "lucide-react";
 import api from "../../api/axios";
 import { useAuth } from "../../auth/AuthContext";
 
-export default function Login() {
+export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -23,7 +33,7 @@ export default function Login() {
       const res = await api.post("/auth/login", { email, password });
 
       if (res.data.user.role !== "admin") {
-        setError("Accès réservé aux administrateurs");
+        setError("ACCÈS REFUSÉ : PRIVILÈGES INSUFFISANTS");
         setLoading(false);
         return;
       }
@@ -32,102 +42,130 @@ export default function Login() {
       login(res.data.user);
       navigate("/admin", { replace: true });
     } catch (err) {
-      setError(err.response?.data?.message || "Identifiants incorrects");
+      setError(err.response?.data?.message || "IDENTIFIANTS INCORRECTS");
       setLoading(false);
     }
   };
 
   return (
-    <div className="h-screen w-full flex items-center justify-center bg-[#0f172a] relative overflow-hidden">
-      {/* Effets de lumière en arrière-plan (Glow) */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/20 blur-[120px] rounded-full"></div>
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-violet-600/10 blur-[120px] rounded-full"></div>
+    <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-hidden font-sans">
+      
+      {/* SECTION GAUCHE : Branding Admin (Noir) */}
+      <div className="hidden md:flex md:w-1/2 bg-black relative p-12 flex-col justify-between">
+        <div className="absolute inset-0 opacity-30 bg-[url('https://images.unsplash.com/photo-1550751827-4bd374c3f58b?q=80&w=2070')] bg-cover bg-center mix-blend-luminosity" />
+        
+        <Link to="/" className="relative z-10 flex items-center gap-2 text-white/50 hover:text-white transition-colors group">
+          <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-[12px] font-black uppercase tracking-[0.3em]">Quitter le terminal</span>
+        </Link>
 
-      <div className="w-full max-w-md p-4 relative z-10 animate-in fade-in zoom-in duration-500">
-        {/* Logo Section */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-indigo-500 to-violet-600 rounded-2xl shadow-xl shadow-indigo-500/20 mb-4">
-            <Sparkles size={32} className="text-white" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-3 mb-6 text-indigo-500">
+            <ShieldCheck size={40} strokeWidth={1} />
           </div>
-          <h1 className="text-3xl font-black text-white tracking-tighter">
-            MARKET<span className="text-indigo-400">PRO</span>
-          </h1>
-          <p className="text-slate-400 font-medium mt-2 text-sm uppercase tracking-widest">Portail Administrateur</p>
+          <h2 className="text-[4vw] leading-[0.8] font-[200] uppercase tracking-tighter text-white italic">
+            Admin<span className="text-indigo-600">.</span><br />
+            Terminal
+          </h2>
+          <p className="mt-6 text-white/40 text-[10px] font-bold uppercase tracking-[0.4em] max-w-xs leading-loose">
+            Accès sécurisé au cœur du système Cheel Global. Authentification requise.
+          </p>
         </div>
 
-        {/* Form Card */}
-        <div className="bg-white/5 backdrop-blur-xl border border-white/10 p-8 rounded-[2rem] shadow-2xl">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* Error Message */}
-            {error && (
-              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-xl flex items-center gap-3 text-red-400 text-sm animate-in shake duration-300">
-                <AlertCircle size={18} />
-                <p className="font-medium">{error}</p>
-              </div>
-            )}
+        <div className="relative z-10 text-white/20 text-[9px] font-medium tracking-widest uppercase">
+          © 2026 Cheel Global Systems — Level A Security
+        </div>
+      </div>
 
-            {/* Email Input */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Adresse Email</label>
-              <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+      {/* SECTION DROITE : Formulaire Admin */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-20 bg-[#F9F9F9]">
+        <div className="w-full max-w-[400px]">
+          
+          {/* Header Mobile */}
+          <div className="md:hidden mb-12">
+            <h1 className="text-4xl font-[400] uppercase tracking-tighter italic leading-none">
+              Admin Cheel<span className="text-indigo-600">.</span>
+            </h1>
+          </div>
+
+          <div className="mb-12 hidden md:block">
+            <h3 className="text-sm font-black uppercase tracking-[0.3em] text-black italic">System Login</h3>
+            <div className="h-[3px] w-12 bg-indigo-600 mt-2" />
+          </div>
+
+          {error && (
+            <div className="mb-8 flex items-center gap-3 bg-black text-white p-5 rounded-none animate-in fade-in slide-in-from-top-4 border-l-4 border-red-600">
+              <AlertCircle size={16} className="text-red-500 shrink-0" />
+              <p className="text-[9px] font-black uppercase tracking-widest leading-tight">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-10">
+            {/* Email */}
+            <div className="group border-b-2 border-black/5 focus-within:border-indigo-600 transition-colors pb-2">
+              <label className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 block mb-4">
+                 Identifiant Admin
+              </label>
+              <div className="flex items-center gap-4">
                 <input
                   type="email"
-                  placeholder="admin@marketpro.com"
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white placeholder:text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all font-medium"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  // L'email est forcé en minuscules ici
+                  onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                  className="w-full bg-transparent border-none p-0 text-lg font-bold placeholder:text-gray-200 focus:ring-0 outline-none"
+                  placeholder=""
                   required
                 />
+                <Mail size={18} className="text-gray-200 group-focus-within:text-indigo-600" />
               </div>
             </div>
 
-            {/* Password Input */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Mot de passe</label>
-              <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+            {/* Password */}
+            <div className="group border-b-2 border-black/5 focus-within:border-indigo-600 transition-colors pb-2">
+              <label className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 block mb-4">
+                 Code d'Accès
+              </label>
+              <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="••••••••"
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl py-4 pl-12 pr-12 text-white placeholder:text-slate-600 outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition-all font-medium"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
+                  className="w-full bg-transparent border-none p-0 text-lg font-bold placeholder:text-gray-200 focus:ring-0 outline-none"
+                  placeholder="••••••••"
                   required
                 />
-                <button 
+                <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 hover:text-black transition-colors"
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            {/* Submit Button */}
+            {/* Submit */}
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white font-black py-4 rounded-2xl shadow-lg shadow-indigo-600/20 transition-all active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-3 uppercase tracking-widest text-xs"
+              className="relative w-full bg-black text-white py-6 overflow-hidden group disabled:bg-gray-100 transition-all"
             >
-              {loading ? (
-                <>
-                  <Loader2 className="animate-spin" size={18} />
-                  Authentification...
-                </>
-              ) : (
-                "Accéder au Dashboard"
-              )}
+              <div className="relative z-10 flex items-center justify-center gap-4">
+                <span className="text-[11px] font-[1000] uppercase tracking-[0.4em]">
+                  {loading ? "Chargement..." : "Entrer dans le Dashboard"}
+                </span>
+                {!loading && <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />}
+              </div>
+              <div className="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
             </button>
           </form>
-        </div>
 
-        {/* Footer Info */}
-        <p className="text-center text-slate-500 text-xs mt-8">
-          &copy; 2024 MarketPro Systems. Accès restreint.
-        </p>
+          <div className="mt-12 pt-8 border-t border-black/5">
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed italic">
+              Terminal sécurisé. Toutes les connexions sont surveillées.
+            </p>
+          </div>
+        </div>
       </div>
     </div>
   );

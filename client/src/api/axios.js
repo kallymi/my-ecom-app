@@ -1,9 +1,10 @@
 import axios from 'axios';
 
 // 1. Nettoyage de l'URL
-const rawUrl = process.env.REACT_APP_API_URL || 'http://172.16.28.23:5000';
+const rawUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 const CLEAN_URL = rawUrl.replace(/["';]/g, "").trim();
 
+console.log("🛠 TEST CONNEXION AXIOS vers :", CLEAN_URL);
 /**
  * 2. Construction de l'URL de base avec /api
  * On vérifie si CLEAN_URL finit déjà par /api pour ne pas le mettre deux fois
@@ -35,6 +36,7 @@ api.interceptors.request.use(
 );
 
 export default api;
+
 
 
 

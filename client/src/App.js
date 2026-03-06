@@ -12,6 +12,7 @@ import { CartProvider } from './context/CartContext';
 import Header from './components/common/Header';
 import Footer from './components/common/Footer';
 
+import ScrollToTop from './components/common/ScrollToTop';
 // Import des pages - Vérifiez que tous ces fichiers existent
 import Home from './pages/Home';
 import Shop from './pages/Shop';
@@ -22,7 +23,7 @@ import Register from './components/auth/Register';
 import VerifyOTP from './components/auth/VerifyOTP';
 import ForgotPassword from './components/auth/ForgotPassword';
 import ResetPassword from './components/auth/ResetPassword';
-import Checkout from './pages/Checkout';
+import Checkout from './components/checkout/index';
 import OrderHistory from './pages/OrderHistory';
 import OrderConfirmation from './pages/OrderConfirmation';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -62,6 +63,7 @@ function App() {
         <CartProvider>
           <Router>
             <Header />
+            <ScrollToTop/>
             <Routes>
               {/* Routes publiques */}
               <Route path="/" element={<Home />} />

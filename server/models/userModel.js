@@ -45,11 +45,15 @@ const userSchema = new mongoose.Schema(
        INFOS UTILISATEUR
     ====================== */
     phone: {
-      type: String
+      type: String,
+      trim: true,
+      deafult: ""
     },
 
     neighborhood: {
-      type: String
+      type: String,
+      trim: true,
+      deafult: ""
     },
 
     avatar: {

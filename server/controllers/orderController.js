@@ -129,12 +129,25 @@ const createOrder = asyncHandler(async (req, res) => {
    COMMANDES UTILISATEUR
 ===================================================== */
 const getUserOrders = asyncHandler(async (req, res) => {
-  const orders = await Order.find({
-    user: req.user._id,
-    isGuest: false
-  }).sort({ createdAt: -1 });
+  const page = parseInt(req.query.page) || 1; // Page actuelle (défaut 1)
+  const limit = 15; // Nombre de commandes par page
+  const skip = (page - 1) * limit;
 
-  res.json({ success: true, orders });
+  const totalOrders = await Order.countDocuments({ user: req.user._id, isGuest: false });
+
+  const orders = await Order.find({ user: req.user._id, isGuest: false })
+    .populate('items.product', 'name images')
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  res.json({
+    success: true,
+    orders,
+    currentPage: page,
+    totalPages: Math.ceil(totalOrders / limit),
+    totalOrders
+  });
 });
 
 /* =====================================================

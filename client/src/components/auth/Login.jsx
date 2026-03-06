@@ -1,19 +1,19 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import axios from "axios";
+import { useAuth } from "../../context/AuthContext";
 import { 
-  Mail, 
-  Lock, 
   ArrowRight, 
   Loader2, 
   AlertCircle, 
   Eye, 
-  EyeOff, 
-  Sparkles 
+  EyeOff,
+  ChevronLeft
 } from "lucide-react";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -24,147 +24,140 @@ const Login = () => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
     try {
-      const cleanEmail = email.trim().toLowerCase();
-      const cleanPassword = password.trim();
-      const { data } = await axios.post(
-        "http://localhost:5000/api/auth/login",
-        { email: cleanEmail, password: cleanPassword },
-        { headers: { "Content-Type": "application/json" } }
-      );
-
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+      await login({ email, password });
       navigate("/");
     } catch (err) {
-      setError(err.response?.data?.message || "Identifiants incorrects");
+      setError(err.response?.data?.message || "Accès refusé. Vérifiez vos clés.");
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-hidden">
       
-      {/* Éléments de design en arrière-plan (Chill Vibes) */}
-      <div className="absolute top-[-10%] left-[-5%] w-[40%] h-[40%] bg-blue-100/40 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-5%] w-[40%] h-[40%] bg-indigo-100/40 rounded-full blur-[120px]" />
-
-      <div className="w-full max-w-[440px] relative z-10">
+      {/* SECTION GAUCHE : Visuel & Branding (Caché sur mobile ou réduit) */}
+      <div className="hidden md:flex md:w-1/2 bg-black relative p-12 flex-col justify-between">
+        <div className="absolute inset-0 opacity-40 bg- bg-cover bg-center mix-blend-luminosity" />
         
-        {/* Header - Plus moderne */}
-        <div className="text-center mb-10">
-          {/* <div className="relative inline-flex mb-6">
-            <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-20 animate-pulse" />
-            <div className="relative w-16 h-16 bg-black rounded-[1.8rem] flex items-center justify-center shadow-2xl rotate-3">
-              <Sparkles className="text-blue-400" size={28} />
-            </div>
-          </div> */}
-          <h1 className="text-2xl font-[500] tracking-tighter italic text-black uppercase leading-none">
-            Welcome Back  <br /> <span className="text-blue-600">Cheel.</span>
-          </h1>
-          <p className="mt-4 text-gray-400 font-bold text-[10px] uppercase tracking-[0.3em]">
-            Identifiez-vous pour continuer
+        <Link to="/" className="relative z-10 flex items-center gap-2 text-white/50 hover:text-white transition-colors group">
+          <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-[12px] font-black uppercase tracking-[0.3em]">Retour a la boutique</span>
+        </Link>
+
+        <div className="relative z-10">
+          <h2 className="text-[3vw] leading-[0.8] font-[200] uppercase tracking-tighter text-white italic">
+            Cheel<span className="text-indigo-600">.</span><br />
+            Boutique
+          </h2>
+          <p className="mt-6 text-white/40 text-[10px] font-bold uppercase tracking-[0.4em] max-w-xs leading-loose">
+            Accédez à votre espace curateur et gérez vos pépites technologiques.
           </p>
         </div>
 
-        {/* Formulaire Card */}
-        <div className="bg-white/80 backdrop-blur-xl p-8 md:p-10 rounded-[3.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.05)] border border-white">
+
+        <div className="relative z-10 text-white/20 text-[9px] font-medium tracking-widest uppercase">
+          © 2026 Cheel Global Systems — All Rights Reserved
+        </div>
+      </div>
+
+      {/* SECTION DROITE : Formulaire */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-20 bg-[#F9F9F9]">
+        <div className="w-full max-w-[400px]">
           
+          {/* Header Mobile Only */}
+          <div className="md:hidden mb-12">
+            <h1 className="text-5xl font-[1000] uppercase tracking-tighter italic leading-none">
+              Login<span className="text-indigo-600">.</span>
+            </h1>
+          </div>
+
+          <div className="mb-12 hidden md:block">
+            <h3 className="text-sm font-black uppercase tracking-[0.3em] text-black">Identification</h3>
+            <div className="h-[3px] w-12 bg-indigo-600 mt-2" />
+          </div>
+
           {error && (
-            <div className="mb-6 flex items-center gap-3 bg-red-50 border border-red-100 p-4 rounded-2xl text-red-600 animate-in fade-in slide-in-from-top-2">
-              <AlertCircle size={18} className="shrink-0" />
-              <p className="text-[10px] font-black uppercase tracking-widest leading-tight">{error}</p>
+            <div className="mb-8 flex items-center gap-3 bg-black text-white p-5 rounded-none animate-in fade-in slide-in-from-top-4">
+              <AlertCircle size={16} className="text-red-500 shrink-0" />
+              <p className="text-[9px] font-black uppercase tracking-widest leading-tight">
+                {error}
+              </p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Input Email */}
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 ml-4">
-                Email Universel
+          <form onSubmit={handleSubmit} className="space-y-8">
+            {/* Email */}
+            <div className="group border-b-2 border-black/5 focus-within:border-indigo-600 transition-colors pb-2">
+              <label className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 block mb-4">
+                 ADRESSE email
               </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                  <Mail size={18} className="text-gray-300 group-focus-within:text-blue-600 transition-colors" />
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck="false"
-                  inputMode="email"
-                  className="block w-full pl-14 pr-6 py-5 bg-gray-50/50 border-2 border-transparent rounded-[2.2rem] text-sm font-bold placeholder:text-gray-300 focus:bg-white focus:border-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all"
-                  placeholder="votre@email.com"
-                  required
-                />
-              </div>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value.toLocaleLowerCase())}
+                className="w-full bg-transparent border-none p-0 text-lg font-bold placeholder:text-gray-200 focus:ring-0 outline-none"
+                placeholder=""
+                required
+              />
             </div>
 
-            {/* Input Password */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center px-4">
-                <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400">
-                  Clé d'accès
+            {/* Password */}
+            <div className="group border-b-2 border-black/5 focus-within:border-indigo-600 transition-colors pb-2">
+              <div className="flex justify-between items-center mb-4">
+                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400">
+                   Mot de PASSE
                 </label>
-                <Link to="/forgot-password" size={18} className="text-[9px] font-black text-blue-600 uppercase hover:text-black transition-colors">
-                  Oublié ?
+                <Link to="/forgot-password" size={14} className="text-[9px] font-black uppercase text-indigo-600 hover:text-black">
+                  OuBLIER ?
                 </Link>
               </div>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                  <Lock size={18} className="text-gray-300 group-focus-within:text-blue-600 transition-colors" />
-                </div>
+              <div className="relative">
                 <input
                   type={showPassword ? "text" : "password"}
                   value={password}
-                  autoCapitalize="none"
-                  autoCorrect="off"
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-14 pr-14 py-5 bg-gray-50/50 border-2 border-transparent rounded-[2.2rem] text-sm font-bold placeholder:text-gray-300 focus:bg-white focus:border-blue-100 focus:outline-none focus:ring-4 focus:ring-blue-500/5 transition-all"
+                  className="w-full bg-transparent border-none p-0 text-lg font-bold placeholder:text-gray-200 focus:ring-0 outline-none"
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-6 flex items-center text-gray-300 hover:text-blue-600 transition-colors"
+                  className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 hover:text-black"
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
             </div>
 
-            {/* Submit Button */}
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="group w-full bg-black text-white py-5 rounded-[2.2rem] font-black uppercase text-[11px] tracking-[0.25em] shadow-2xl shadow-black/10 hover:bg-blue-600 hover:shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:bg-gray-200 disabled:shadow-none"
-              >
-                {loading ? (
-                  <Loader2 className="animate-spin" size={20} />
-                ) : (
-                  <>
-                    Entrer dans l'espace <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </button>
-            </div>
+            {/* Submit */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="relative w-full bg-black text-white py-6 overflow-hidden group disabled:bg-gray-100 transition-all"
+            >
+              <div className="relative z-10 flex items-center justify-center gap-4">
+                <span className="text-[11px] font-[1000] uppercase tracking-[0.4em]">
+                  {loading ? "Authenticating..." : "SE CONNECTER"}
+                </span>
+                {!loading && <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />}
+              </div>
+              
+              {/* Effet de remplissage au hover */}
+              <div className="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+            </button>
           </form>
-        </div>
 
-        {/* Bottom Link */}
-        <div className="text-center mt-10">
-          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em]">
-            Pas encore de compte ?{" "}
-            <Link to="/register" className="text-black hover:text-blue-600 transition-colors border-b-2 border-black/10 hover:border-blue-600">
-              Rejoindre la communauté
-            </Link>
-          </p>
+          <div className="mt-12 pt-8 border-t border-black/5">
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed">
+              New to the ecosystem? <br />
+              <Link to="/register" className="text-black hover:text-indigo-600 border-b border-black transition-colors">
+                Create an account
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

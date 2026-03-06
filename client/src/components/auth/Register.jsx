@@ -2,16 +2,13 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import {
-  User,
-  Mail,
-  Lock,
   ArrowRight,
   Loader2,
   AlertCircle,
   CheckCircle2,
   Eye,
   EyeOff,
-  Sparkles
+  ChevronLeft
 } from "lucide-react";
 
 const Register = () => {
@@ -25,7 +22,6 @@ const Register = () => {
   });
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -68,168 +64,156 @@ const Register = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-hidden">
       
-      {/* Chill Background Orbs */}
-      <div className="absolute top-[-10%] right-[-5%] w-[50%] h-[50%] bg-blue-100/30 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-5%] w-[50%] h-[50%] bg-indigo-100/30 rounded-full blur-[120px] pointer-events-none" />
-
-      <div className="w-full max-w-[480px] relative z-10">
+      {/* SECTION GAUCHE : Branding & Image */}
+      <div className="hidden md:flex md:w-5/12 bg-black relative p-12 flex-col justify-between">
+        <div className="absolute inset-0 opacity-50 bg- bg-cover bg-center mix-blend-luminosity" />
         
-        {/* Header */}
-        <div className="text-center mb-8">
-          <div className="relative inline-flex mb-6 group">
-            <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" />
-            <div className="relative w-16 h-16 bg-blue-600 rounded-[1.8rem] flex items-center justify-center shadow-2xl transition-transform group-hover:-rotate-6">
-              <User className="text-white" size={28} />
-            </div>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-[500] tracking-tighter italic text-black uppercase leading-none">
-            Rejoindre l' <br /> <span className="text-blue-600">Equipe Chell.</span>
-          </h1>
-          <p className="mt-4 text-gray-400 font-bold text-[10px] uppercase tracking-[0.3em]">
-            Créez votre profil en 2 minutes
+        <Link to="/login" className="relative z-10 flex items-center gap-2 text-white/50 hover:text-white transition-colors group">
+          <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-[10px] font-black uppercase tracking-[0.3em]">Back to Login</span>
+        </Link>
+
+        <div className="relative z-10">
+          <h2 className="text-[3vw] leading-[0.8] font-[500] uppercase tracking-tighter text-white italic">
+            REJOINDRE<span className="text-indigo-600">.</span><br />
+            Cheel
+          </h2>
+          <p className="mt-8 text-white/40 text-[9px] font-bold uppercase tracking-[0.4em] max-w-xs leading-loose">
+            Devenez membre de l'écosystème et accédez aux drops exclusifs.
           </p>
         </div>
 
-        {/* Main Card */}
-        <div className="bg-white/80 backdrop-blur-xl p-8 md:p-10 rounded-[3.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-white/50">
+        <div className="relative z-10 text-white/10 text-[9px] font-medium tracking-[0.5em] uppercase">
+          Ecosystem Access — 2026
+        </div>
+      </div>
+
+      {/* SECTION DROITE : Formulaire */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-20 bg-[#F9F9F9] overflow-y-auto">
+        <div className="w-full max-w-[440px] py-10">
           
-          {/* Status Messages */}
+          <div className="mb-12">
+            <h3 className="text-sm font-black uppercase tracking-[0.3em] text-black">Inscription</h3>
+            <div className="h-[3px] w-12 bg-indigo-600 mt-2" />
+          </div>
+
+          {/* Messages d'état */}
           {error && (
-            <div className="mb-6 flex items-center gap-3 bg-red-50 border border-red-100 p-4 rounded-2xl text-red-600 animate-in fade-in slide-in-from-top-2">
-              <AlertCircle size={18} className="shrink-0" />
-              <p className="text-[10px] font-black uppercase tracking-widest leading-tight">{error}</p>
+            <div className="mb-8 flex items-center gap-3 bg-black text-white p-5 animate-in fade-in slide-in-from-top-4">
+              <AlertCircle size={16} className="text-red-500 shrink-0" />
+              <p className="text-[9px] font-black uppercase tracking-widest">{error}</p>
             </div>
           )}
 
           {success && (
-            <div className="mb-6 flex items-center gap-3 bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-emerald-600 animate-in fade-in slide-in-from-top-2">
-              <CheckCircle2 size={18} className="shrink-0" />
-              <p className="text-[10px] font-black uppercase tracking-widest leading-tight">{success}</p>
+            <div className="mb-8 flex items-center gap-3 bg-indigo-600 text-white p-5 animate-in fade-in slide-in-from-top-4">
+              <CheckCircle2 size={16} className="shrink-0" />
+              <p className="text-[9px] font-black uppercase tracking-widest">{success}</p>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-10">
             
-            {/* Full Name */}
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-4">Nom Complet</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                  <User size={18} className="text-gray-300 group-focus-within:text-blue-600 transition-colors" />
-                </div>
-                <input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="block w-full pl-14 pr-6 py-4.5 bg-gray-50/50 border-2 border-transparent rounded-[2rem] text-sm font-bold placeholder:text-gray-300 focus:bg-white focus:border-blue-100 focus:outline-none transition-all"
-                  placeholder="John Doe"
-                  required
-                />
-              </div>
+            {/* Nom Complet */}
+            <div className="group border-b-2 border-black/5 focus-within:border-indigo-600 transition-colors pb-2">
+              <label className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 block mb-3">
+                NOM COMPLET
+              </label>
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="w-full bg-transparent border-none p-0 text-lg font-bold placeholder:text-gray-200 focus:ring-0 outline-none"
+                placeholder=""
+                required
+              />
             </div>
 
             {/* Email */}
-            <div className="space-y-1.5">
-              <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-4">Adresse Email</label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                  <Mail size={18} className="text-gray-300 group-focus-within:text-blue-600 transition-colors" />
-                </div>
-                <input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="block w-full pl-14 pr-6 py-4.5 bg-gray-50/50 border-2 border-transparent rounded-[2rem] text-sm font-bold placeholder:text-gray-300 focus:bg-white focus:border-blue-100 focus:outline-none transition-all"
-                  placeholder="john@exemple.com"
-                  required
-                />
-              </div>
+            <div className="group border-b-2 border-black/5 focus-within:border-indigo-600 transition-colors pb-2">
+              <label className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 block mb-3">
+                ADRESSE EMAIL
+              </label>
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                className="w-full bg-transparent border-none p-0 text-lg font-bold placeholder:text-gray-200 focus:ring-0 outline-none"
+                placeholder=""
+                required
+              />
             </div>
 
-            {/* Password Grid (Responsive) */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-4">Password</label>
-                <div className="relative group">
+            {/* Grille Passwords */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+              <div className="group border-b-2 border-black/5 focus-within:border-indigo-600 transition-colors pb-2">
+                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 block mb-3">
+                  MOT DE PASSE
+                </label>
+                <div className="relative">
                   <input
                     type={showPassword ? "text" : "password"}
                     name="password"
                     value={formData.password}
                     onChange={handleChange}
-                    className="block w-full px-6 py-4.5 bg-gray-50/50 border-2 border-transparent rounded-[2rem] text-sm font-bold placeholder:text-gray-300 focus:bg-white focus:border-blue-100 focus:outline-none transition-all"
+                    className="w-full bg-transparent border-none p-0 text-lg font-bold placeholder:text-gray-200 focus:ring-0 outline-none"
                     placeholder="••••••••"
                     required
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 pr-5 flex items-center text-gray-300 hover:text-blue-600"
+                    className="absolute right-0 top-1/2 -translate-y-1/2 text-gray-300 hover:text-black"
                   >
                     {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
                   </button>
                 </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-black uppercase tracking-[0.2em] text-gray-400 ml-4">Confirm</label>
-                <div className="relative group">
-                  <input
-                    type={showConfirmPassword ? "text" : "password"}
-                    name="confirmPassword"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                    className="block w-full px-6 py-4.5 bg-gray-50/50 border-2 border-transparent rounded-[2rem] text-sm font-bold placeholder:text-gray-300 focus:bg-white focus:border-blue-100 focus:outline-none transition-all"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute inset-y-0 right-0 pr-5 flex items-center text-gray-300 hover:text-blue-600"
-                  >
-                    {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
+              <div className="group border-b-2 border-black/5 focus-within:border-indigo-600 transition-colors pb-2">
+                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 block mb-3">
+                   CONFIRMER LE MOT DE PASSE
+                </label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full bg-transparent border-none p-0 text-lg font-bold placeholder:text-gray-200 focus:ring-0 outline-none"
+                  placeholder="••••••••"
+                  required
+                />
               </div>
             </div>
 
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={loading}
-                className="group w-full bg-black text-white py-5 rounded-[2.2rem] font-black uppercase text-[11px] tracking-[0.25em] shadow-2xl shadow-black/10 hover:bg-blue-600 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:bg-gray-200"
-              >
-                {loading ? <Loader2 className="animate-spin" size={20} /> : <>Commencer l'aventure <ArrowRight size={18} /></>}
-              </button>
-            </div>
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className="relative w-full bg-black text-white py-6 overflow-hidden group disabled:bg-gray-100 transition-all"
+            >
+              <div className="relative z-10 flex items-center justify-center gap-4">
+                <span className="text-[11px] font-[1000] uppercase tracking-[0.4em]">
+                  {loading ? "Creating Profile..." : "REJOINDRE L'Adventure"}
+                </span>
+                {!loading && <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />}
+              </div>
+              <div className="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
+            </button>
           </form>
 
-          {/* Social Alternative */}
-          {/* <div className="relative my-8 text-center">
-            <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-100"></div></div>
-            <span className="relative bg-white px-4 text-[9px] font-black text-gray-300 uppercase tracking-widest">Ou via Google</span>
-          </div> */}
-
-          {/* <button className="flex items-center justify-center gap-3 w-full py-4 bg-white border border-gray-100 rounded-[2rem] hover:bg-gray-50 transition-all">
-            <svg className="w-5 h-5" viewBox="0 0 24 24">
-              <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
-              <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-              <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
-              <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-            </svg>
-            <span className="text-[10px] font-black uppercase tracking-widest">S'inscrire avec Google</span>
-          </button> */}
-        </div>
-
-        {/* Footer */}
-        <div className="text-center mt-8">
-          <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em]">
-            Déjà des nôtres ? <Link to="/login" className="text-black hover:text-blue-600 transition-colors border-b-2 border-black/10 hover:border-blue-600 ml-1">Se connecter</Link>
-          </p>
+          <div className="mt-12 pt-8 border-t border-black/5">
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em]">
+              DEJA member? <br />
+              <Link to="/login" className="text-black hover:text-indigo-600 border-b border-black transition-colors">
+                CONNECTEZ VOUS
+              </Link>
+            </p>
+          </div>
         </div>
       </div>
     </div>

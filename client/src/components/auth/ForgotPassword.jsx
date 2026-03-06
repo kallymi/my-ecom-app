@@ -2,13 +2,12 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import axios from "axios";
 import { 
-  Mail, 
-  HelpCircle, 
-  ArrowLeft, 
+  ArrowRight, 
   Loader2, 
   AlertCircle, 
+  ChevronLeft,
   CheckCircle2,
-  Sparkles 
+  Mail
 } from "lucide-react";
 
 const ForgotPassword = () => {
@@ -34,14 +33,14 @@ const ForgotPassword = () => {
 
       setSuccess(data.message || "Lien de réinitialisation envoyé !");
       
-      // On laisse le temps à l'utilisateur de lire le message de succès
+      // On laisse l'utilisateur voir le succès avant de rediriger si nécessaire
       setTimeout(() => {
-        navigate("/reset-password", { state: { email }});
-      }, 3000);
+        if(data.success) navigate("/login");
+      }, 5000);
 
     } catch (err) {
       setError(
-        err.response?.data?.message || "Impossible d'envoyer l'email pour le moment"
+        err.response?.data?.message || "Une erreur est survenue."
       );
     } finally {
       setLoading(false);
@@ -49,106 +48,118 @@ const ForgotPassword = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-white flex flex-col md:flex-row overflow-hidden">
       
-      {/* Chill Background Orbs */}
-      <div className="absolute top-[-15%] left-[-10%] w-[60%] h-[60%] bg-blue-100/30 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-15%] right-[-10%] w-[60%] h-[60%] bg-indigo-100/30 rounded-full blur-[120px] pointer-events-none" />
-
-      <div className="w-full max-w-[460px] relative z-10">
+      {/* SECTION GAUCHE : Visuel & Branding */}
+      <div className="hidden md:flex md:w-1/2 bg-black relative p-12 flex-col justify-between">
+        <div className="absolute inset-0 opacity-20 bg-[url('https://images.unsplash.com/photo-1550745165-9bc0b252726f?q=80&w=2070')] bg-cover bg-center mix-blend-luminosity" />
         
-        {/* Header Section */}
-        <div className="text-center mb-10">
-          <div className="relative inline-flex mb-6 group">
-            <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" />
-            <div className="relative w-16 h-16 bg-white border border-blue-50 rounded-[1.8rem] flex items-center justify-center shadow-2xl transition-transform group-hover:scale-110">
-              <HelpCircle className="text-blue-600" size={28} />
-            </div>
-          </div>
-          <h1 className="text-2xl md:text-3xl font-[500] tracking-tighter italic text-black uppercase leading-[0.9]">
-            Oubli de <br /> <span className="text-blue-600">Passe.</span>
-          </h1>
-          <p className="mt-4 text-gray-400 font-bold text-[10px] uppercase tracking-[0.3em] max-w-[280px] mx-auto leading-relaxed">
-            Pas de panique, on s'occupe de tout.
+        <Link to="/login" className="relative z-10 flex items-center gap-2 text-white/50 hover:text-white transition-colors group">
+          <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+          <span className="text-[12px] font-black uppercase tracking-[0.3em]">Retour au login</span>
+        </Link>
+
+        <div className="relative z-10">
+          <h2 className="text-[3vw] leading-[0.8] font-[200] uppercase tracking-tighter text-white italic">
+            Reset<span className="text-indigo-600">.</span><br />
+            Access
+          </h2>
+          <p className="mt-6 text-white/40 text-[10px] font-bold uppercase tracking-[0.4em] max-w-xs leading-loose">
+            Entrez votre email pour recevoir une clé de récupération temporaire.
           </p>
         </div>
 
-        {/* Main Card */}
-        <div className="bg-white/80 backdrop-blur-xl p-8 md:p-10 rounded-[3.5rem] shadow-[0_20px_50px_rgba(0,0,0,0.04)] border border-white/50 overflow-hidden">
+        <div className="relative z-10 text-white/20 text-[9px] font-medium tracking-widest uppercase">
+          © 2026 Cheel Global Systems — Security Protocol
+        </div>
+      </div>
+
+      {/* SECTION DROITE : Formulaire */}
+      <div className="flex-1 flex items-center justify-center p-6 md:p-20 bg-[#F9F9F9]">
+        <div className="w-full max-w-[400px]">
           
-          {/* Status Messages */}
+          {/* Header Mobile */}
+          <div className="md:hidden mb-12">
+            <h1 className="text-5xl font-[1000] uppercase tracking-tighter italic leading-none">
+              Reset<span className="text-indigo-600">.</span>
+            </h1>
+          </div>
+
+          <div className="mb-12 hidden md:block">
+            <h3 className="text-sm font-black uppercase tracking-[0.3em] text-black">Récupération</h3>
+            <div className="h-[3px] w-12 bg-indigo-600 mt-2" />
+          </div>
+
+          {/* Messages d'état */}
           {error && (
-            <div className="mb-6 flex items-center gap-3 bg-red-50 border border-red-100 p-4 rounded-2xl text-red-600 animate-in fade-in slide-in-from-top-2">
-              <AlertCircle size={18} className="shrink-0" />
-              <p className="text-[10px] font-black uppercase tracking-widest leading-tight">{error}</p>
+            <div className="mb-8 flex items-center gap-3 bg-black text-white p-5 rounded-none animate-in fade-in slide-in-from-top-4 border-l-4 border-red-600">
+              <AlertCircle size={16} className="text-red-500 shrink-0" />
+              <p className="text-[9px] font-black uppercase tracking-widest leading-tight">{error}</p>
             </div>
           )}
 
           {success && (
-            <div className="mb-6 flex items-center gap-3 bg-emerald-50 border border-emerald-100 p-4 rounded-2xl text-emerald-600 animate-in fade-in zoom-in">
-              <CheckCircle2 size={18} className="shrink-0" />
-              <p className="text-[10px] font-black uppercase tracking-widest leading-tight">{success}</p>
+            <div className="mb-8 flex items-center gap-3 bg-indigo-600 text-white p-5 rounded-none animate-in zoom-in">
+              <CheckCircle2 size={16} className="shrink-0" />
+              <p className="text-[9px] font-black uppercase tracking-widest leading-tight">{success}</p>
             </div>
           )}
 
           {!success ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <label className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400 ml-4">
-                  Votre Adresse Email
+            <form onSubmit={handleSubmit} className="space-y-12">
+              <div className="group border-b-2 border-black/5 focus-within:border-indigo-600 transition-colors pb-2">
+                <label className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-400 block mb-4">
+                   VOTRE ADRESSE EMAIL
                 </label>
-                <div className="relative group">
-                  <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none">
-                    <Mail size={18} className="text-gray-300 group-focus-within:text-blue-600 transition-colors" />
-                  </div>
+                <div className="flex items-center gap-4">
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="block w-full pl-14 pr-6 py-5 bg-gray-50/50 border-2 border-transparent rounded-[2.2rem] text-sm font-bold placeholder:text-gray-300 focus:bg-white focus:border-blue-100 focus:outline-none transition-all"
+                    onChange={(e) => setEmail(e.target.value.toLowerCase())}
+                    className="w-full bg-transparent border-none p-0 text-lg font-bold placeholder:text-gray-200 focus:ring-0 outline-none"
                     placeholder="nom@exemple.com"
                     required
                   />
+                  <Mail size={18} className="text-gray-200 group-focus-within:text-indigo-600 transition-colors" />
                 </div>
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="group w-full bg-black text-white py-5 rounded-[2.2rem] font-black uppercase text-[11px] tracking-[0.25em] shadow-xl shadow-black/10 hover:bg-blue-600 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:bg-gray-200"
+                className="relative w-full bg-black text-white py-6 overflow-hidden group disabled:bg-gray-100 transition-all"
               >
-                {loading ? (
-                  <Loader2 className="animate-spin" size={20} />
-                ) : (
-                  <>Envoyer le lien <Sparkles size={16} /></>
-                )}
+                <div className="relative z-10 flex items-center justify-center gap-4">
+                  <span className="text-[11px] font-[1000] uppercase tracking-[0.4em]">
+                    {loading ? "Traitement..." : "Envoyer le lien"}
+                  </span>
+                  {!loading && <ArrowRight size={18} className="group-hover:translate-x-2 transition-transform" />}
+                </div>
+                <div className="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
               </button>
             </form>
           ) : (
-            <div className="text-center py-4 space-y-6 animate-in fade-in slide-in-from-bottom-4">
-              <p className="text-xs text-gray-500 font-bold leading-relaxed px-4">
-                Vérifiez votre boîte de réception. Un lien de réinitialisation vous a été envoyé. Pensez à regarder vos spams !
+            <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] leading-loose">
+                Un protocole de récupération a été envoyé à <span className="text-black">{email}</span>. 
+                Veuillez vérifier vos messages entrants (et spams).
               </p>
-              <div className="pt-2">
-                <Link
-                  to="/login"
-                  className="inline-flex items-center gap-2 text-black font-black text-[10px] uppercase tracking-[0.2em] border-b-2 border-black/10 hover:border-blue-600 hover:text-blue-600 transition-all pb-1"
-                >
-                  <ArrowLeft size={14} /> Retour au Login
-                </Link>
-              </div>
+              <Link to="/login" className="inline-flex items-center gap-3 text-black font-black text-[11px] uppercase tracking-[0.3em] group">
+                <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
+                Retour au login
+              </Link>
             </div>
           )}
-        </div>
 
-        {/* Footer Link */}
-        {!success && (
-          <div className="text-center mt-10">
-            <Link to="/login" className="inline-flex items-center gap-2 text-gray-400 hover:text-black transition-colors text-[10px] font-black uppercase tracking-[0.2em]">
-              <ArrowLeft size={14} /> Revenir en arrière
-            </Link>
+          <div className="mt-12 pt-8 border-t border-black/5">
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed">
+              Besoin d'aide supplémentaire ? <br />
+              <a href="mailto:support@cheel.com" className="text-black hover:text-indigo-600 border-b border-black transition-colors">
+                Contacter l'assistance
+              </a>
+            </p>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );

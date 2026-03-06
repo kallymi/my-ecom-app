@@ -1,78 +1,80 @@
 const asyncHandler = require("express-async-handler");
 const Order = require("../../models/orderModel");
 
-/**
- * @desc    Statistiques Chiffre d’Affaires (ADMIN)
- * @route   GET /api/admin/stats/revenue
- * @access  Private/Admin
- */
 const getRevenueStats = asyncHandler(async (req, res) => {
   const now = new Date();
 
-  /* =========================
-     CA VALIDÉ
-  ========================= */
-  const validatedRevenue = await Order.aggregate([
+  const stats = await Order.aggregate([
+    // On ne compte que ce qui est livré (l'argent est encaissé)
+    { $match: { status: "DELIVERED" } },
+
     {
-      $match: {
-        isRevenueCounted: true,
-        status: "DELIVERED"
+      $addFields: {
+        // Sécurité : on récupère la deadline, si elle n'existe pas, on met une date très ancienne
+        finalReturnDeadline: { 
+          $ifNull: [{ $max: "$items.returnDeadline" }, new Date(0)] 
+        }
       }
     },
+
     {
       $group: {
         _id: null,
-        total: { $sum: "$totalPrice" },
-        count: { $sum: 1 }
+        // CA VALIDÉ : Déjà compté OU (Deadline passée)
+        validatedRevenue: {
+          $sum: {
+            $cond: [
+              { 
+                $or: [
+                  { $eq: ["$isRevenueCounted", true] },
+                  { $lt: ["$finalReturnDeadline", now] }
+                ]
+              },
+              "$totalAmount",
+              0
+            ]
+          }
+        },
+        // CA EN ATTENTE : Pas encore compté ET Deadline futur
+        pendingRevenue: {
+          $sum: {
+            $cond: [
+              { 
+                $and: [
+                  { $eq: ["$isRevenueCounted", false] },
+                  { $gt: ["$finalReturnDeadline", now] },
+                  { $ne: ["$finalReturnDeadline", new Date(0)] } // Exclure les anciennes commandes sans deadline
+                ]
+              },
+              "$totalAmount",
+              0
+            ]
+          }
+        },
+        totalOrders: { $sum: 1 }
       }
     }
   ]);
 
-  /* =========================
-     CA EN ATTENTE (livré mais retournable)
-  ========================= */
-  const pendingRevenue = await Order.aggregate([
-    {
-      $match: {
-        status: "DELIVERED",
-        isRevenueCounted: false,
-        "items.returnDeadline": { $gte: now }
-      }
-    },
-    {
-      $group: {
-        _id: null,
-        total: { $sum: "$totalPrice" },
-        count: { $sum: 1 }
-      }
-    }
-  ]);
+  const result = stats[0] || { validatedRevenue: 0, pendingRevenue: 0, totalOrders: 0 };
 
-  /* =========================
-     COMMANDES RETOURNÉES
-  ========================= */
-  const returnedOrders = await Order.countDocuments({
-    status: "RETURNED"
-  });
-
-  /* =========================
-     PANIER MOYEN (CA validé)
-  ========================= */
-  const avgBasket =
-    validatedRevenue[0]?.count > 0
-      ? validatedRevenue[0].total / validatedRevenue[0].count
-      : 0;
+  // On récupère aussi le nombre total de commandes (tous statuts confondus) pour le Dashboard
+  const globalCount = await Order.countDocuments();
 
   res.json({
     success: true,
+    ordersCount: globalCount, // Correction ici pour ton Dashboard
     revenue: {
-      validated: validatedRevenue[0]?.total || 0,
-      pending: pendingRevenue[0]?.total || 0,
-      returnedOrders,
-      validatedOrders: validatedRevenue[0]?.count || 0,
-      averageBasket: Math.round(avgBasket)
+      validated: result.validatedRevenue,
+      pending: result.pendingRevenue,
+      totalEncaisse: result.validatedRevenue + result.pendingRevenue,
+      averageBasket: result.totalOrders > 0 
+        ? Math.round(result.validatedRevenue / result.totalOrders) 
+        : 0
     }
   });
 });
 
-module.exports = { getRevenueStats };
+module.exports = { 
+  getRevenueStats, 
+};

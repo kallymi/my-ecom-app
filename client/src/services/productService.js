@@ -1,37 +1,37 @@
-import axios from 'axios';
+import api from '../api/axios';
 
 /**
  * 1. CONFIGURATION DE L'URL
  * On utilise l'IP .29.19. 
  * Note : On ne met PAS '/api' ici si on l'ajoute plus bas dans baseURL.
  */
-const API_URL_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+// const API_URL_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
-const api = axios.create({
-  // Ici, on s'assure que toutes les requêtes commencent par http://IP:5000/api
-  baseURL: `${API_URL_BASE}/api`,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
+// const api = axios.create({
+//   // Ici, on s'assure que toutes les requêtes commencent par http://IP:5000/api
+//   baseURL: `${API_URL_BASE}/api`,
+//   headers: {
+//     'Content-Type': 'application/json'
+//   }
+// });
 
-// Log de contrôle pour la console F12
-console.log("📡 Mode Connexion :", API_URL_BASE + "/api");
+// // Log de contrôle pour la console F12
+// console.log("📡 Mode Connexion :", API_URL_BASE + "/api");
 
-/**
- * 2. INTERCEPTEUR JWT
- * Ajoute automatiquement le token de sécurité à chaque requête
- */
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+// /**
+//  * 2. INTERCEPTEUR JWT
+//  * Ajoute automatiquement le token de sécurité à chaque requête
+//  */
+// api.interceptors.request.use(
+//   (config) => {
+//     const token = localStorage.getItem('token');
+//     if (token) {
+//       config.headers.Authorization = `Bearer ${token}`;
+//     }
+//     return config;
+//   },
+//   (error) => Promise.reject(error)
+// );
 
 /**
  * 3. EXPORT DES SERVICES

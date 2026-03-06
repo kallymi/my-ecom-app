@@ -40,11 +40,10 @@ export default function Navbar() {
         
         {/* LOGO */}
         <Link to="/" className="group flex items-center gap-1">
-          <span className="text-3xl font-[1000] tracking-tighter italic text-black uppercase">
+          <span className="text-2xl font-[1000] tracking-tighter italic text-black uppercase">
             Cheel<span className="text-indigo-600 not-italic">.</span>
           </span>
         </Link>
-
         {/* --- ACTIONS DROITE --- */}
         <div className="flex items-center gap-2 md:gap-8">
           

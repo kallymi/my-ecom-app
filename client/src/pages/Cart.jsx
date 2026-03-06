@@ -80,7 +80,7 @@ const Cart = () => {
 
   // HELPER POUR WHATSAPP
   const getWhatsAppLink = () => {
-    const phone = "235XXXXXXXXX"; // REMPLACE PAR TON NUMÉRO
+    const phone = "23566268256"; // REMPLACE PAR TON NUMÉRO
     const itemsList = cart.map(i => `${i.product.name} (x${i.quantity})`).join(", ");
     const text = `Bonjour Cheel, je souhaite commander : ${itemsList}. Total : ${cartTotal} FCFA`;
     return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;

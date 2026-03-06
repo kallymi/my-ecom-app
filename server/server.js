@@ -43,13 +43,13 @@ app.use(helmet({
 app.set('trust proxy', 1);
 
 // 3. Rate Limiter : Limite les tentatives sur l'authentification
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Autorise 10 requêtes (plus souple pour tes tests)
-  message: { message: "Trop de tentatives, réessayez dans 15 minutes." },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// const authLimiter = rateLimit({
+//   windowMs: 15 * 60 * 1000, // 15 minutes
+//   max: 10, // Autorise 10 requêtes (plus souple pour tes tests)
+//   message: { message: "Trop de tentatives, réessayez dans 15 minutes." },
+//   standardHeaders: true,
+//   legacyHeaders: false,
+// });
 
 // --------------------------
 // SERVEUR HTTP + SOCKET.IO
@@ -61,9 +61,9 @@ const io = new Server(server, {
       "http://localhost:3000",
       "http://localhost:5173",
       "http://localhost:5174",
-      "http://172.16.28.23:3000",
-      "http://172.16.28.23:5173",
-      "http://172.16.28.23:5174",
+      "http://172.16.28.24:3000",
+      "http://172.16.28.24:5173",
+      "http://172.16.28.24:5174",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
@@ -91,21 +91,42 @@ io.on("connection", (socket) => {
 app.use(express.json({ limit: '10kb' })); // Protection contre les payloads trop lourds
 app.use(express.urlencoded({ extended: false, limit: '10kb' }));
 
+// 1. Dans server.js, modifie le CORS pour être plus permissif en développement
 app.use(
   cors({
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      "http://172.16.28.23:3000",
-      "http://172.16.28.23:5173",
-      "http://172.16.28.23:5174",
-    ],
+    origin: function (origin, callback) {
+      // Autorise les requêtes sans origine (comme les outils de test type Postman/Curl)
+      if (!origin) return callback(null, true);
+      
+      // Liste des origines autorisées
+      const allowedOrigins = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://172.16.28.24:3000",
+        "http://172.16.28.24:5173",
+        "http://172.16.28.24:5174"
+      ];
+
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        console.log("CORS blocked origin:", origin); // Log pour debugger
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization"]
   })
 );
+
+// 2. Augmente ou commente temporairement le Rate Limiter pour tester
+const authLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 100, // 100 essais par minute (large pour les tests)
+  message: { message: "Trop de tentatives." },
+});
 
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 

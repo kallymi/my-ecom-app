@@ -1,6 +1,6 @@
 import { useNavigate, NavLink } from "react-router-dom";
 import { 
-  LayoutDashboard, Package, ShoppingCart, 
+  LayoutDashboard, Package, ShoppingCart, Terminal,
   Users, LogOut, Sparkles, RotateCcw ,Trash2, Undo2, ChevronRight, X, Tag
 } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
@@ -43,10 +43,11 @@ export default function Sidebar({ isOpen, onClose }) {
         <div className="p-8 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-indigo-600 rounded-2xl flex items-center justify-center">
-              <Sparkles size={20} className="text-white fill-white" />
+              <Terminal size={20} className="text-white" />
             </div>
+            
             <span className="text-xl font-black tracking-tighter uppercase italic">
-              Market<span className="text-indigo-500">Pro</span>
+              CHEEL<span className="text-indigo-500"></span>
             </span>
           </div>
           <button onClick={onClose} className="lg:hidden p-2 hover:bg-white/10 rounded-xl transition-colors">

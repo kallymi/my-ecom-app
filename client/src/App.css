@@ -44,3 +44,12 @@
     transform: rotate(360deg);
   }
 }
+
+main {
+  padding-top: env(safe-area-inset-top);
+}
+
+.outline-text {
+  color: transparent;
+  -webkit-text-stroke: 1px #6366f1; /* Couleur Indigo */
+}

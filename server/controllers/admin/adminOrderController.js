@@ -109,19 +109,25 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
 
   // 🟢 Livraison → démarrer délai de retour
   if (status === 'DELIVERED' && oldStatus !== 'DELIVERED') {
-    order.deliveredAt = new Date();
+    const now = new Date();
+    order.deliveredAt = now;
+    order.isPaid = true;
+    order.paidAt = now;
     order.isRevenueCounted = false;
 
+    // Utilise une boucle map pour garantir la création du tableau
     order.items = order.items.map(item => {
-      const delay = item.product?.returnDelay || 7;
-      const deadline = new Date();
-      deadline.setDate(deadline.getDate() + delay);
-
-      return {
-        ...item.toObject(),
-        returnDeadline: deadline
-      };
+        const delay = item.product?.returnDelay || 2;
+        const deadline = new Date(now);
+        deadline.setDate(deadline.getDate() + delay);
+        
+        return {
+            ...item.toObject(), // Garde les données existantes
+            returnDeadline: deadline
+        };
     });
+
+    order.markModified('items'); 
   }
 
   // 🔁 Retour validé → sortir du CA
@@ -249,8 +255,46 @@ const rejectOrderReturn = asyncHandler(async (req, res) => {
     res.json({ success: true, message: "Demande de retour rejetée" });
 });
 
+/* ======================================================
+   @desc    Obtenir les données de revenus pour le graphique
+   @route   GET /api/admin/orders/analytics
+   @access  Admin
+====================================================== */
+const getRevenueAnalytics = asyncHandler(async (req, res) => {
+  const { period } = req.query; // "week" ou "month"
+  const now = new Date();
+  let startDate = new Date();
 
+  // Configuration de la fenêtre de tir
+  if (period === 'month') {
+    startDate.setDate(now.getDate() - 30); // 30 derniers jours
+  } else {
+    startDate.setDate(now.getDate() - 7);  // 7 derniers jours
+  }
 
+  const stats = await Order.aggregate([
+    {
+      $match: {
+        createdAt: { $gte: startDate },
+        status: { $nin: ['CANCELLED', 'RETURNED'] } // On garde le CA "propre"
+      }
+    },
+    {
+      $group: {
+        _id: { 
+          // On groupe par jour formaté pour le frontend
+          $dateToString: { format: "%d/%m", date: "$createdAt" } 
+        },
+        revenue: { $sum: "$totalPrice" }, // Assure-toi que c'est le bon champ dans ton Model
+        rawDate: { $first: "$createdAt" } 
+      }
+    },
+    { $sort: { "rawDate": 1 } } // Tri chronologique indispensable
+  ]);
+
+  // Si pas de données, on renvoie un tableau vide pour éviter le crash Recharts
+  res.json(stats.map(s => ({ name: s._id, revenue: s.revenue })));
+});
 
 /* ======================================================
    EXPORT
@@ -262,5 +306,6 @@ module.exports = {
   deleteOrder,
   getReturnOrders,
   approveOrderReturn,
-  rejectOrderReturn
+  rejectOrderReturn,
+  getRevenueAnalytics
 };
