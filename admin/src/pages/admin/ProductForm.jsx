@@ -4,7 +4,7 @@ import "react-quill-new/dist/quill.snow.css";
 import { useNavigate, useParams } from "react-router-dom";
 import { 
   Save, ArrowLeft, Image as ImageIcon, Loader2, 
-  Plus, X, Tag, Calendar, Package, Info, Clock
+  Plus, X, Tag, Calendar, Clock, AlertCircle
 } from "lucide-react";
 import api from "../../api/axios";
 
@@ -16,31 +16,21 @@ export default function ProductForm() {
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
   const [categories, setCategories] = useState([]);
+  const [error, setError] = useState("");
 
   // États pour les images
   const [mainImage, setMainImage] = useState(null);
   const [mainPreview, setMainPreview] = useState(null);
   const [galleryImages, setGalleryImages] = useState([]);
   const [galleryPreviews, setGalleryPreviews] = useState([]);
-  const [existingImages, setExistingImages] = useState([]);
 
   const [form, setForm] = useState({
-    name: "",
-    price: "",
-    stock: 0,
-    category: "",
-    description: "",
-    returnDelay: 7,
-    promotion: {
-      isActive: false,
-      type: "percentage",
-      value: 0,
-      startDate: "",
-      endDate: ""
-    }
+    name: "", price: "", stock: 0, category: "",
+    description: "", returnDelay: 7,
+    promotion: { isActive: false, type: "percentage", value: 0, startDate: "", endDate: "" }
   });
 
-  // 1. Chargement des données (Catégories + Produit si Edit)
+  // 1. Initialisation des données
   useEffect(() => {
     const initData = async () => {
       try {
@@ -50,7 +40,6 @@ export default function ProductForm() {
         if (isEdit) {
           const { data } = await api.get(`/admin/products/${id}`);
           const p = data.product || data;
-          
           setForm({
             name: p.name || "",
             price: p.price || "",
@@ -66,14 +55,13 @@ export default function ProductForm() {
               endDate: p.promotion?.endDate ? p.promotion.endDate.split('T')[0] : ""
             }
           });
-
-          // Gestion des images existantes
-          setExistingImages(p.images || []);
+          // Gestion preview image existante (Cloudinary)
           const main = p.images?.find(img => img.isMain);
-          if (main) setMainPreview(`http://localhost:5000${main.url}`);
+          if (main) setMainPreview(main.url.startsWith('http') ? main.url : `http://localhost:5000${main.url}`);
         }
       } catch (err) {
-        console.error("Erreur init:", err);
+        console.error("Erreur chargement:", err);
+        setError("Impossible de charger les données du produit.");
       } finally {
         setFetching(false);
       }
@@ -81,47 +69,53 @@ export default function ProductForm() {
     initData();
   }, [id, isEdit]);
 
-  // 2. Gestion des fichiers
+  // 2. Gestion Image Principale
   const handleMainImage = (e) => {
     const file = e.target.files[0];
     if (file) {
+      if (file.size > 10 * 1024 * 1024) {
+        alert("L'image est trop lourde (max 10Mo)");
+        return;
+      }
       setMainImage(file);
       setMainPreview(URL.createObjectURL(file));
     }
   };
 
+  // 3. Gestion Galerie (Correction de l'erreur ReferenceError)
   const handleGallery = (e) => {
     const files = Array.from(e.target.files);
-    setGalleryImages(prev => [...prev, ...files]);
-    const newPreviews = files.map(f => URL.createObjectURL(f));
+    const validFiles = files.filter(file => {
+      if (file.size > 10 * 1024 * 1024) {
+        alert(`Le fichier ${file.name} est trop lourd.`);
+        return false;
+      }
+      return true;
+    });
+
+    setGalleryImages(prev => [...prev, ...validFiles]);
+    const newPreviews = validFiles.map(f => URL.createObjectURL(f));
     setGalleryPreviews(prev => [...prev, ...newPreviews]);
   };
 
-  // 3. Envoi du formulaire
+  // 4. Soumission
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
     try {
       const formData = new FormData();
       formData.append("name", form.name);
-      formData.append("price", Number(form.price));
-      formData.append("stock", Number(form.stock));
-      formData.append("category", form.category._id || form.category);
+      formData.append("price", form.price);
+      formData.append("stock", form.stock);
+      formData.append("category", form.category);
       formData.append("description", form.description);
-      formData.append("returnDelay", Number(form.returnDelay || 7));
-      // On envoie l'objet promotion stringifié pour le backend
+      formData.append("returnDelay", form.returnDelay);
       formData.append("promotion", JSON.stringify(form.promotion));
 
-      if (mainImage && mainImage instanceof File) {
-        formData.append("mainImage", mainImage);
-      }
-
-      galleryImages.forEach(file => {
-        if (file instanceof File) {
-          formData.append("galleryImages", file);
-        }
-      });
+      if (mainImage) formData.append("mainImage", mainImage);
+      galleryImages.forEach(file => formData.append("galleryImages", file));
 
       const config = { headers: { "Content-Type": "multipart/form-data" } };
 
@@ -133,7 +127,8 @@ export default function ProductForm() {
 
       navigate("/admin/products");
     } catch (err) {
-      alert("Erreur lors de l'enregistrement");
+      const msg = err.response?.data?.message || "Erreur lors de l'enregistrement";
+      setError(msg.includes("too large") ? "Une ou plusieurs images sont trop lourdes pour le serveur." : msg);
     } finally {
       setLoading(false);
     }
@@ -146,182 +141,171 @@ export default function ProductForm() {
   );
 
   return (
-    <div className="min-h-screen bg-gray-50/50 p-6 md:p-12">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-12 pb-24">
+      <div className="max-w-4xl mx-auto">
         
-        {/* Header Navigation */}
-        <div className="flex items-center justify-between mb-12">
-          <button onClick={() => navigate("/admin/products")} className="flex items-center text-gray-400 hover:text-gray-900 transition-colors font-black uppercase text-[10px] tracking-[0.3em]">
-            <ArrowLeft size={16} className="mr-2" /> Retour
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <button type="button" onClick={() => navigate(-1)} className="p-2 bg-white rounded-xl shadow-sm border border-slate-100">
+            <ArrowLeft size={20} className="text-slate-600" />
           </button>
-          <h1 className="text-2xl font-black text-gray-900 uppercase tracking-tighter">
-            {isEdit ? "Modifier le produit" : "Ajouter au catalogue"}
+          <h1 className="text-sm font-black uppercase tracking-tighter text-slate-800 italic">
+            {isEdit ? "Modifier l'article" : "Nouveau Produit"}
           </h1>
+          <div className="w-10"></div>
         </div>
 
-        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-12 gap-12">
-          
-          {/* COLONNE GAUCHE : IMAGES */}
-          <div className="lg:col-span-4 space-y-8">
-            
-            {/* Image Principale */}
-            <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Image de couverture</label>
-              <div className="relative aspect-square rounded-[2rem] bg-gray-50 border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden group">
-                {mainPreview ? (
-                  <img src={mainPreview} className="w-full h-full object-cover" alt="Preview" />
-                ) : (
-                  <ImageIcon size={40} className="text-gray-200" />
-                )}
-                <label className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center cursor-pointer text-white text-[10px] font-black uppercase">
-                  <input type="file" hidden onChange={handleMainImage} accept="image/*" />
-                  <Plus size={24} className="mb-2" /> Changer l'image
-                </label>
-              </div>
-            </div>
+        {error && (
+          <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 text-rose-600 text-xs font-bold uppercase">
+            <AlertCircle size={18} /> {error}
+          </div>
+        )}
 
-            {/* Galerie */}
-            <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-gray-100">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-4 block">Galerie photos</label>
-              <div className="grid grid-cols-3 gap-3 mb-4">
-                {galleryPreviews.map((src, i) => (
-                  <div key={i} className="relative aspect-square rounded-xl overflow-hidden border border-gray-100">
-                    <img src={src} className="w-full h-full object-cover" alt="" />
-                    <button type="button" onClick={() => {
-                      setGalleryImages(prev => prev.filter((_, idx) => idx !== i));
-                      setGalleryPreviews(prev => prev.filter((_, idx) => idx !== i));
-                    }} className="absolute top-1 right-1 bg-rose-500 text-white p-1 rounded-md">
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
-                <label className="aspect-square rounded-xl border-2 border-dashed border-gray-200 flex items-center justify-center text-gray-300 hover:text-indigo-500 hover:border-indigo-500 cursor-pointer transition-colors">
-                  <input type="file" hidden multiple onChange={handleGallery} accept="image/*" />
-                  <Plus size={20} />
-                </label>
-              </div>
+        <form onSubmit={handleSubmit} className="space-y-6">
+          
+          {/* Section Image Principale */}
+          <div className="bg-white p-4 rounded-[2.5rem] shadow-sm border border-slate-100">
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 block ml-4">Photo principale</label>
+            <div className="relative aspect-square rounded-[2rem] bg-slate-50 border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden group">
+              {mainPreview ? (
+                <img src={mainPreview} className="w-full h-full object-cover" alt="Preview" />
+              ) : (
+                <div className="text-center">
+                  <ImageIcon size={40} className="text-slate-200 mx-auto mb-2" />
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">Cliquez pour ajouter</p>
+                </div>
+              )}
+              <input type="file" hidden id="mainImg" onChange={handleMainImage} accept="image/*" />
+              <label htmlFor="mainImg" className="absolute inset-0 cursor-pointer z-10"></label>
             </div>
           </div>
 
-          {/* COLONNE DROITE : INFOS & PROMO */}
-          <div className="lg:col-span-8 space-y-8">
-            
-            {/* Infos Générales */}
-            <div className="bg-white p-10 rounded-[3rem] shadow-sm border border-gray-100 space-y-6">
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Nom du produit</label>
-                <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full px-8 py-5 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-500 font-bold text-lg" placeholder="ex: MacBook Pro M3..." />
+          {/* Section Galerie Additionnelle */}
+          <div className="bg-white p-4 md:p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
+            <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4 block ml-2">Galerie photos</label>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
+              {galleryPreviews.map((src, i) => (
+                <div key={i} className="relative aspect-square rounded-2xl overflow-hidden border border-slate-100">
+                  <img src={src} className="w-full h-full object-cover" alt="Gallery preview" />
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setGalleryImages(prev => prev.filter((_, idx) => idx !== i));
+                      setGalleryPreviews(prev => prev.filter((_, idx) => idx !== i));
+                    }} 
+                    className="absolute top-1 right-1 bg-rose-500 text-white p-1 rounded-lg"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              ))}
+              <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 hover:text-indigo-500 cursor-pointer transition-all bg-slate-50/50">
+                <input type="file" hidden multiple onChange={handleGallery} accept="image/*" />
+                <Plus size={24} />
+                <span className="text-[8px] font-black mt-1">AJOUTER</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Formulaire Infos */}
+          <div className="bg-white p-6 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-100 space-y-5">
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">Nom du produit</label>
+              <input required value={form.name} onChange={e => setForm({...form, name: e.target.value})} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" placeholder="ex: MacBook Pro..." />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">Prix (FCFA)</label>
+                <input type="number" required value={form.price} onChange={e => setForm({...form, price: e.target.value})} className="w-full px-6 py-4 rounded-2xl bg-indigo-50/50 border-none font-black text-indigo-600" />
               </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Prix (FCFA)</label>
-                  <input type="number" required value={form.price} onChange={e => setForm({...form, price: e.target.value})} className="w-full px-8 py-5 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-500 font-black text-indigo-600" />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Stock initial</label>
-                  <input type="number" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} className="w-full px-8 py-5 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-500 font-black" />
-                </div>
-                {/* NOUVEAU CHAMP : DÉLAI DE RETOUR */}
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-indigo-400 uppercase tracking-widest ml-2 flex items-center gap-2">
-                    <Clock size={12} className="text-indigo-400" /> {/* 👈 Utilise Clock au lieu de ClockIcon */}
-                    Délai de retour (Jours)
-                  </label>
-                  <div className="relative">
-                    <input 
-                      type="number" 
-                      min="0"
-                      value={form.returnDelay} 
-                      onChange={e => setForm({...form, returnDelay: e.target.value})} 
-                      className="w-full px-8 py-5 rounded-2xl bg-indigo-50 border-none focus:ring-2 focus:ring-indigo-500 font-black text-indigo-600"
-                      placeholder="7"
-                    />
-                    <span className="absolute right-6 top-1/2 -translate-y-1/2 text-[10px] font-black text-indigo-300 uppercase">Jours</span>
-                  </div>
-                </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">Stock initial</label>
+                <input type="number" value={form.stock} onChange={e => setForm({...form, stock: e.target.value})} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none font-black" />
               </div>
+            </div>
 
-
-              <div className="space-y-2">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Catégorie</label>
-                <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full px-8 py-5 rounded-2xl bg-gray-50 border-none focus:ring-2 focus:ring-indigo-500 font-bold appearance-none">
-                  <option value="">Sélectionner une catégorie</option>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">Catégorie</label>
+                <select value={form.category} onChange={e => setForm({...form, category: e.target.value})} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none font-bold text-xs">
+                  <option value="">Choisir...</option>
                   {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
                 </select>
               </div>
-
-              <div className="space-y-2 quill-container">
-                <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2">Description</label>
-                <ReactQuill 
-                  theme="snow"
-                  value={form.description}
-                  onChange={(content) => setForm({...form, description: content})}
-                  modules={{
-                    toolbar: [
-                      ['bold', 'italic', 'underline'],
-                      [{'list': 'ordered'}, {'list': 'bullet'}],
-                      ['clean']
-                    ],
-                  }}
-                  className="bg-gray-50 rounded-[2rem] overflow-hidden border-none"
-                />
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4 flex items-center gap-1"><Clock size={10}/> Délai Retour (Jours)</label>
+                <input type="number" value={form.returnDelay} onChange={e => setForm({...form, returnDelay: e.target.value})} className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-none font-black" />
               </div>
             </div>
 
-            {/* Section Promotion (Alignée Backend) */}
-            <div className={`p-10 rounded-[3rem] border-2 transition-all ${form.promotion.isActive ? 'bg-rose-50/50 border-rose-100 shadow-xl shadow-rose-100/20' : 'bg-gray-50 border-gray-100'}`}>
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-3">
-                  <div className={`p-3 rounded-2xl ${form.promotion.isActive ? 'bg-rose-500 text-white' : 'bg-gray-200 text-gray-400'}`}>
-                    <Tag size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-black uppercase text-sm tracking-tight text-gray-900">Offre Promotionnelle</h3>
-                    <p className="text-[10px] font-bold text-gray-400 uppercase">Booster les ventes sur ce produit</p>
-                  </div>
-                </div>
-                <label className="relative inline-flex items-center cursor-pointer">
-                  <input type="checkbox" className="sr-only peer" checked={form.promotion.isActive} onChange={e => setForm({...form, promotion: {...form.promotion, isActive: e.target.checked}})} />
-                  <div className="w-14 h-7 bg-gray-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
-                </label>
+            <div className="space-y-1">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-4">Description</label>
+              <div className="rounded-2xl overflow-hidden border border-slate-100">
+                <ReactQuill theme="snow" value={form.description} onChange={(c) => setForm({...form, description: c})} className="bg-slate-50" />
               </div>
+            </div>
+          </div>
 
-              {form.promotion.isActive && (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-top-4 duration-500">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest ml-2">Type de remise</label>
-                    <select value={form.promotion.type} onChange={e => setForm({...form, promotion: {...form.promotion, type: e.target.value}})} className="w-full px-6 py-4 rounded-xl bg-white border-none shadow-sm font-black text-rose-600">
-                      <option value="percentage">Pourcentage (%)</option>
-                      <option value="fixed">Montant Fixe (FCFA)</option>
+          {/* Section Promotion */}
+          <div className={`p-6 md:p-10 rounded-[2.5rem] border-2 transition-all duration-300 ${form.promotion.isActive ? 'bg-rose-50/30 border-rose-100' : 'bg-white border-slate-100 shadow-sm'}`}>
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className={`p-3 rounded-2xl ${form.promotion.isActive ? 'bg-rose-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                  <Tag size={18} />
+                </div>
+                <div>
+                  <h3 className="font-black uppercase text-[11px] tracking-tight text-slate-900">Promotion</h3>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase italic">Activer une remise</p>
+                </div>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={form.promotion.isActive} onChange={e => setForm({...form, promotion: {...form.promotion, isActive: e.target.checked}})} />
+                <div className="w-12 h-6 bg-slate-200 rounded-full peer peer-checked:bg-rose-500 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-full"></div>
+              </label>
+            </div>
+
+            {form.promotion.isActive && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-rose-400 uppercase tracking-widest ml-2">Type</label>
+                    <select value={form.promotion.type} onChange={e => setForm({...form, promotion: {...form.promotion, type: e.target.value}})} className="w-full px-4 py-3 rounded-xl bg-white border border-rose-100 font-bold text-xs text-rose-600">
+                      <option value="percentage">% Pourcentage</option>
+                      <option value="fixed">Montant fixe</option>
                     </select>
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-rose-400 uppercase tracking-widest ml-2">Valeur de la remise</label>
-                    <input type="number" value={form.promotion.value} onChange={e => setForm({...form, promotion: {...form.promotion, value: e.target.value}})} className="w-full px-6 py-4 rounded-xl bg-white border-none shadow-sm font-black text-rose-600" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 flex items-center gap-2"><Calendar size={12}/> Date de début</label>
-                    <input type="date" value={form.promotion.startDate} onChange={e => setForm({...form, promotion: {...form.promotion, startDate: e.target.value}})} className="w-full px-6 py-4 rounded-xl bg-white border-none shadow-sm font-bold text-gray-500" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest ml-2 flex items-center gap-2"><Calendar size={12}/> Date de fin</label>
-                    <input type="date" value={form.promotion.endDate} onChange={e => setForm({...form, promotion: {...form.promotion, endDate: e.target.value}})} className="w-full px-6 py-4 rounded-xl bg-white border-none shadow-sm font-bold text-gray-500" />
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-rose-400 uppercase tracking-widest ml-2">Valeur</label>
+                    <input type="number" value={form.promotion.value} onChange={e => setForm({...form, promotion: {...form.promotion, value: e.target.value}})} className="w-full px-4 py-3 rounded-xl bg-white border border-rose-100 font-black text-rose-600 text-xs" />
                   </div>
                 </div>
-              )}
-            </div>
-
-            {/* Boutons Action */}
-            <div className="flex items-center justify-end gap-6 pt-4">
-              <button type="button" onClick={() => navigate("/admin/products")} className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 hover:text-rose-500 transition-colors">Annuler</button>
-              <button type="submit" disabled={loading} className="flex items-center gap-3 px-12 py-5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-[2rem] font-black uppercase text-[10px] tracking-[0.2em] shadow-xl shadow-indigo-200 transition-all active:scale-95 disabled:opacity-50">
-                {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
-                Enregistrer le produit
-              </button>
-            </div>
-
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-2 flex items-center gap-1"><Calendar size={10}/> Début</label>
+                    <input type="date" value={form.promotion.startDate} onChange={e => setForm({...form, promotion: {...form.promotion, startDate: e.target.value}})} className="w-full px-4 py-3 rounded-xl bg-white border border-slate-100 font-bold text-[10px]" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest ml-2 flex items-center gap-1"><Calendar size={10}/> Fin</label>
+                    <input type="date" value={form.promotion.endDate} onChange={e => setForm({...form, promotion: {...form.promotion, endDate: e.target.value}})} className="w-full px-4 py-3 rounded-xl bg-white border border-slate-100 font-bold text-[10px]" />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* Bouton de validation */}
+          <div className="fixed bottom-6 left-4 right-4 md:static">
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full flex items-center justify-center gap-3 py-5 bg-indigo-600 text-white rounded-[2rem] font-black uppercase text-[11px] tracking-widest shadow-xl shadow-indigo-200 active:scale-95 transition-all disabled:opacity-50"
+            >
+              {loading ? <Loader2 className="animate-spin" /> : <Save size={18} />}
+              {isEdit ? "Mettre à jour l'article" : "Enregistrer le produit"}
+            </button>
+          </div>
+
         </form>
       </div>
     </div>

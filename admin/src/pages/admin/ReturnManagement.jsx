@@ -33,11 +33,22 @@ const AdminReturnManagement = () => {
     useEffect(() => { fetchReturnRequests(); }, []);
 
     const handleAction = async (id, action) => {
-        const promise = api.put(`/admin/orders/${id}/${action}-return`);
+        // 1. Demander un motif si on rejette (ou même pour valider)
+        const reason = window.prompt(`Entrez un motif pour cette action (${action === 'reject' ? 'Obligatoire pour rejet' : 'Optionnel'}):`);
+        
+        // Si l'action est 'reject' et qu'aucun motif n'est saisi, on annule
+        if (action === 'reject' && !reason) {
+            toast.error("Un motif est requis pour rejeter un retour.");
+            return;
+        }
+
+        const promise = api.put(`/admin/orders/${id}/${action}-return`, { 
+            reason: reason || "Aucune note fournie" 
+        });
         
         await toast.promise(promise, {
             loading: 'Mise à jour du système...',
-            success: action === 'approve' ? 'Retour validé, stock restauré !' : 'Demande rejetée.',
+            success: action === 'approve' ? 'Retour validé !' : 'Demande rejetée.',
             error: (err) => err.response?.data?.message || 'Erreur lors de l\'action',
         });
         
@@ -125,6 +136,8 @@ const AdminReturnManagement = () => {
                                 </div>
 
                                 {/* Section Centrale: Articles */}
+                                {/* Section Centrale: Articles */}
+                                {/* Section Centrale: Articles */}
                                 <div className="flex-grow p-6 md:p-8">
                                     <h4 className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
                                         <div className="h-1 w-4 bg-orange-400 rounded-full"></div>
@@ -132,11 +145,28 @@ const AdminReturnManagement = () => {
                                     </h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         {order.items.map((item, idx) => (
-                                            <div key={idx} className="flex items-center justify-between p-3 bg-white border border-gray-50 rounded-xl group-hover:border-blue-100 transition-colors">
-                                                <span className="text-xs font-bold text-gray-700 truncate pr-4 italic">
-                                                    {item.product?.name}
-                                                </span>
-                                                <span className="font-black text-[10px] bg-gray-900 text-white px-2 py-1 rounded-md">
+                                            <div key={idx} className="flex items-center p-2 bg-white border border-gray-50 rounded-xl group-hover:border-blue-100 transition-colors gap-3">
+                                                
+                                                {/* IMAGE DU PRODUIT (Snapshot du modèle Order) */}
+                                                <div className="w-12 h-12 rounded-lg bg-gray-100 overflow-hidden shrink-0 border border-gray-50">
+                                                    <img 
+                                                        src={item.image} // On utilise directement item.image stocké dans la commande
+                                                        alt={item.name} 
+                                                        className="w-full h-full object-cover"
+                                                        onError={(e) => { e.target.src = "/placeholder-p.png"; }} // Image de secours
+                                                    />
+                                                </div>
+                                                
+                                                <div className="flex-grow min-w-0">
+                                                    <p className="text-[10px] font-black text-gray-700 truncate uppercase tracking-tight">
+                                                        {item.name}
+                                                    </p>
+                                                    <p className="text-[8px] font-bold text-blue-600 uppercase">
+                                                        Réf: {item.product?.slice(-6).toUpperCase()}
+                                                    </p>
+                                                </div>
+
+                                                <span className="font-black text-[10px] bg-gray-900 text-white px-2 py-1 rounded-md shrink-0">
                                                     x{item.quantity}
                                                 </span>
                                             </div>

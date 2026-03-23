@@ -50,7 +50,7 @@ export const OrderRow = ({ order, onSelect, statusColors, statusLabels }) => {
           </div>
           <div className="min-w-0">
             <p className="text-[10px] font-[1000] text-gray-300 uppercase tracking-[0.2em] leading-none mb-1.5 italic">
-              CMD-#{order.orderNumber || order._id?.slice(-6).toUpperCase()}
+              {order.orderNumber || order._id?.slice(-6).toUpperCase()}
             </p>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-tighter italic truncate max-w-[150px]">
                 {items.length} article{items.length > 1 ? 's' : ''} • {items[0]?.product?.name || "Chargement..."}

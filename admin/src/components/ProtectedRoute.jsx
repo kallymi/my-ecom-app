@@ -4,10 +4,17 @@ import { useAuth } from "../auth/AuthContext";
 export default function ProtectedRoute({ children, adminOnly = false }) {
   const { user, loading } = useAuth();
 
-  if (loading) return <div className="p-4">Chargement...</div>;
+  // On retourne le JSX proprement
+  if (loading) {
+    return <div className="p-4">Chargement...</div>;
+  }
 
-  if (!user) return <Navigate to="/login" replace />;
+  // Si pas d'utilisateur, on redirige vers le login
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
 
+  // Si admin requis mais rôle incorrect, on redirige
   if (adminOnly && user.role !== "admin") {
     return <Navigate to="/login" replace />;
   }

@@ -6,6 +6,7 @@ import { StatCard } from "../../components/order/StatCard";
 import { 
   MagnifyingGlassIcon, FunnelIcon, ArrowPathIcon, 
   ShoppingBagIcon, ArchiveBoxIcon
+
 } from "@heroicons/react/24/outline";
 
 const STATUS_LABELS = {
@@ -36,10 +37,12 @@ export default function Orders() {
     try {
       const res = await api.get("/orders/admin/all");
       setOrders(res.data.orders || []);
+
     } catch (err) { 
       console.error("Erreur flux:", err); 
     } finally { 
       setLoading(false); 
+
     }
   };
 
@@ -176,6 +179,7 @@ export default function Orders() {
               </div>
             )}
           </div>
+
         </div>
       </div>
 
@@ -190,3 +194,4 @@ export default function Orders() {
     </div>
   );
 }
+

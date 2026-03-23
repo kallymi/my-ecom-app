@@ -38,10 +38,10 @@ const storage = new CloudinaryStorage({
       public_id: `${Date.now()}-${Math.round(Math.random() * 1e9)}`,
       transformation: [
         {
-          width: 800,
-          height: 800,
+          width: 1000,
+          height: 1000,
           crop: "limit",
-          quality: "auto",
+          quality: "auto:good",
           fetch_format: "auto"
         }
       ]
@@ -56,7 +56,7 @@ const uploadCloudinary = multer({
   storage,
   fileFilter,
   limits: {
-    fileSize: 5 * 1024 * 1024 // 5MB
+    fileSize: 10 * 1024 * 1024 // 5MB
   }
 });
 

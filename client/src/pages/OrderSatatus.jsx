@@ -10,6 +10,7 @@ export const ORDER_STATUS_LABELS = {
   RETURN_REQUESTED: "Retour demandé",
   RETURNED: "Retournée",
   CANCELLED: "Annulée",
+  RETURN_REJECTED: "Retour refusé",
 };
 
 /* ============================
@@ -24,4 +25,5 @@ export const ORDER_STATUS_COLORS = {
   RETURN_REQUESTED: "#f97316",  // orange
   RETURNED: "#6b7280",          // gray
   CANCELLED: "#ef4444",         // red
+  RETURN_REJECTED: "#64748b", // Ardoise/Gris foncé
 };

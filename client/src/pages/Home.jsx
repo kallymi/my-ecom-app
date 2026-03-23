@@ -9,26 +9,55 @@ const Home = () => {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [loading, setLoading] = useState(true);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [productsPerPage, setProductsPerPage] = useState(32);
+
   const navigate = useNavigate();
 
-  // On utilise l'URL du .env pour que ça marche sur mobile
   const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
+  // Responsive logic
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 768) {
+        setProductsPerPage(16);
+      } else {
+        setProductsPerPage(32);
+      }
+    };
+
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
         const [prodRes, catRes] = await Promise.allSettled([
           api.get("/products"),
-          api.get("/categories")
+          api.get("/categories"),
         ]);
 
         if (prodRes.status === "fulfilled") {
           const data = prodRes.value.data;
-          setProducts(Array.isArray(data) ? data : (data.products || data.data || []));
+          setProducts(
+            Array.isArray(data)
+              ? data
+              : data.products || data.data || []
+          );
         }
+
         if (catRes.status === "fulfilled") {
           const data = catRes.value.data;
-          setCategories(Array.isArray(data) ? data : (data.categories || data.data || []));
+          setCategories(
+            Array.isArray(data)
+              ? data
+              : data.categories || data.data || []
+          );
         }
       } catch (err) {
         console.error("Erreur:", err);
@@ -36,100 +65,193 @@ const Home = () => {
         setLoading(false);
       }
     };
+
     fetchData();
   }, []);
 
-  const filteredProducts = selectedCategory === "All" 
-    ? products 
-    : products.filter(p => (p.category?._id || p.category) === selectedCategory);
+  // Filtrage
+  const filteredProducts =
+    selectedCategory === "All"
+      ? products
+      : products.filter(
+          (p) => (p.category?._id || p.category) === selectedCategory
+        );
 
-  if (loading) return (
-    <div className="h-screen flex items-center justify-center bg-white">
-      <Loader2 className="animate-spin text-indigo-600" size={40} />
-    </div>
+  // Pagination calcul
+  const indexOfLastProduct = currentPage * productsPerPage;
+  const indexOfFirstProduct = indexOfLastProduct - productsPerPage;
+
+  const currentProducts = filteredProducts.slice(
+    indexOfFirstProduct,
+    indexOfLastProduct
   );
 
+  const totalPages = Math.ceil(
+    filteredProducts.length / productsPerPage
+  );
+
+  // Reset page quand filtre change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory]);
+
+  // Scroll top quand page change
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [currentPage]);
+
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-white">
+        <Loader2 className="animate-spin text-indigo-600" size={40} />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[#fafafa] text-gray-900 overflow-x-hidden">
-      
-      {/* HEADER / HERO - Adapté Mobile */}
-      <header className="pt-16 md:pt-24 pb-8 md:pb-12 px-4 md:px-6 max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
+    <div className="min-h-screen bg-[#fafafa] text-gray-900">
+
+      {/* HERO */}
+      <header className="pt-20 pb-10 px-4 max-w-7xl mx-auto">
+        <div className="flex flex-col md:flex-row justify-between gap-6">
           <div>
             <div className="flex items-center gap-2 mb-3 text-indigo-600">
-              <Zap size={14} fill="currentColor" />
-              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.3em]">Nouveautés 2026</span>
+              <Zap size={14} />
+              <span className="text-xs font-bold uppercase tracking-widest">
+                Nouveautés 2026
+              </span>
             </div>
-            {/* Taille de texte responsive : text-5xl sur mobile, text-8xl sur PC */}
-            <h1 className="text-5xl md:text-8xl font-black tracking-tighter leading-[0.85] uppercase">
-              Le futur <br /><span className="text-gray-200 italic leading-none">est ici.</span>
+
+            <h1 className="text-3xl md:text-7xl font-black leading-tight uppercase">
+              Le futur <br />
+              <span className="text-gray-300 italic">est ici.</span>
             </h1>
           </div>
-          <p className="text-gray-400 max-w-[250px] md:max-w-xs text-xs md:text-sm font-medium leading-relaxed">
-            Une sélection rigoureuse pour ceux qui cherchent l'exceptionnel au quotidien.
+
+          <p className="text-gray-400 max-w-xs text-sm">
+            Une sélection premium pour une expérience moderne et fluide.
           </p>
         </div>
       </header>
 
-      {/* FILTRES NAVIGATION - Sticky & Scrollable */}
-      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 mb-8 md:mb-12">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-4 flex gap-3 overflow-x-auto no-scrollbar scroll-smooth">
-          <FilterBtn 
-            label="Tous" 
-            active={selectedCategory === "All"} 
-            onClick={() => setSelectedCategory("All")} 
+      {/* FILTERS */}
+      <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur border-b">
+        <div className="max-w-7xl mx-auto px-4 py-4 flex gap-3 overflow-x-auto">
+          <FilterBtn
+            label="Tous"
+            active={selectedCategory === "All"}
+            onClick={() => setSelectedCategory("All")}
           />
-          {categories.map(cat => (
-            <FilterBtn 
+
+          {categories.map((cat) => (
+            <FilterBtn
               key={cat._id}
-              label={cat.name} 
-              active={selectedCategory === cat._id} 
-              onClick={() => setSelectedCategory(cat._id)} 
+              label={cat.name}
+              active={selectedCategory === cat._id}
+              onClick={() => setSelectedCategory(cat._id)}
             />
           ))}
         </div>
       </nav>
 
-      {/* GRILLE DE PRODUITS - 2 Colonnes Mobile */}
-      <main className="max-w-7xl mx-auto px-4 md:px-6 pb-12 md:pb-20">
-        {filteredProducts.length > 0 ? (
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-x-3 gap-y-8 md:gap-x-8 md:gap-y-12">
-            {filteredProducts.map(product => (
-              <ProductCard 
-                key={product._id} 
-                product={product} 
-                API_URL={API_URL} 
-                navigate={navigate} 
-              />
-            ))}
-          </div>
+      {/* PRODUCTS */}
+      <main className="max-w-7xl mx-auto px-4 py-10">
+        {currentProducts.length > 0 ? (
+          <>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-8">
+              {currentProducts.map((product) => (
+                <ProductCard
+                  key={product._id}
+                  product={product}
+                  API_URL={API_URL}
+                  navigate={navigate}
+                />
+              ))}
+            </div>
+
+            {/* PAGINATION DESKTOP */}
+            {window.innerWidth >= 768 && totalPages > 1 && (
+              <div className="flex justify-center gap-2 mt-12 flex-wrap">
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) => Math.max(p - 1, 1))
+                  }
+                  className="px-4 py-2 bg-gray-100 rounded-xl"
+                >
+                  ←
+                </button>
+
+                {[...Array(totalPages)].map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => setCurrentPage(i + 1)}
+                    className={`px-4 py-2 rounded-xl font-bold ${
+                      currentPage === i + 1
+                        ? "bg-black text-white"
+                        : "bg-gray-100"
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() =>
+                    setCurrentPage((p) =>
+                      Math.min(p + 1, totalPages)
+                    )
+                  }
+                  className="px-4 py-2 bg-gray-100 rounded-xl"
+                >
+                  →
+                </button>
+              </div>
+            )}
+
+            {/* LOAD MORE MOBILE */}
+            {window.innerWidth < 768 &&
+              indexOfLastProduct < filteredProducts.length && (
+                <div className="flex justify-center mt-10">
+                  <button
+                    onClick={() =>
+                      setCurrentPage((p) => p + 1)
+                    }
+                    className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:scale-105 transition"
+                  >
+                    Voir plus
+                  </button>
+                </div>
+              )}
+          </>
         ) : (
-          <div className="text-center py-20 md:py-40 border-2 border-dashed border-gray-100 rounded-[2rem] md:rounded-[3rem]">
-            <p className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-gray-400 px-4">
-              Collection en cours de réapprovisionnement
-            </p>
+          <div className="text-center py-32 text-gray-400">
+            Aucun produit disponible
           </div>
         )}
       </main>
 
-      {/* FOOTER CTA - Adapté Mobile */}
-      <footer className="max-w-7xl mx-auto px-4 md:px-6 pb-12 md:pb-20">
-        <div className="bg-indigo-600 rounded-[2rem] md:rounded-[3rem] p-8 md:p-12 text-center text-white">
-          <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter mb-6">Suivez votre style.</h2>
-          <button className="bg-white text-black px-6 py-4 rounded-xl md:rounded-2xl text-[9px] md:text-[10px] font-black uppercase flex items-center gap-3 mx-auto hover:scale-105 transition-transform active:scale-95">
-            Mon compte <ArrowRight size={14} />
+      {/* CTA */}
+      {/* <footer className="max-w-7xl mx-auto px-4 pb-16">
+        <div className="bg-indigo-600 text-white rounded-3xl p-10 text-center">
+          <h2 className="text-2xl font-bold mb-4">
+            Suivez votre style
+          </h2>
+          <button className="bg-white text-black px-6 py-3 rounded-xl flex items-center gap-2 mx-auto">
+            Mon compte <ArrowRight size={16} />
           </button>
         </div>
-      </footer>
+      </footer> */}
     </div>
   );
 };
 
 const FilterBtn = ({ label, active, onClick }) => (
-  <button 
+  <button
     onClick={onClick}
-    className={`px-5 py-2 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap active:scale-90 ${
-      active ? 'bg-black text-white shadow-lg' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+    className={`px-5 py-2 rounded-full text-xs font-bold uppercase ${
+      active
+        ? "bg-black text-white"
+        : "bg-gray-100 text-gray-500"
     }`}
   >
     {label}

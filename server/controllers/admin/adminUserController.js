@@ -55,28 +55,48 @@ const getUsers = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 
 // Version optimisée de updateUser
+// @desc    Mettre à jour un utilisateur (Général)
+// @route   PUT /api/admin/users/:id
 const updateUser = asyncHandler(async (req, res) => {
   const { name, email, role, isBlocked } = req.body;
-  
-  // Utilise un objet de mise à jour propre
-  const updateData = { name, email };
-  
-  // N'ajoute les champs sensibles que si nécessaire
-  if (role) updateData.role = role;
-  if (isBlocked !== undefined) updateData.isBlocked = isBlocked;
+  const user = await User.findById(req.params.id);
 
-  const updatedUser = await User.findByIdAndUpdate(
-    req.params.id,
-    { $set: updateData },
-    { new: true, runValidators: true }
-  ).select('-password');
-
-  if (!updatedUser) {
+  if (!user) {
     res.status(404);
     throw new Error('Utilisateur non trouvé');
   }
 
-  res.json({ success: true, user: updatedUser });
+  // 1. Mise à jour des infos de base
+  user.name = name || user.name;
+  user.email = email ? email.toLowerCase() : user.email; // Respect de la règle minuscules
+
+  // 2. Mise à jour du rôle avec sécurité
+  if (role) {
+    // Empêcher l'admin de se rétrograder lui-même
+    if (req.user._id.toString() === req.params.id && role !== user.role) {
+      res.status(400);
+      throw new Error("Vous ne pouvez pas modifier votre propre rôle.");
+    }
+    user.role = role;
+  }
+
+  // 3. Mise à jour du statut de blocage
+  if (isBlocked !== undefined) {
+    user.isBlocked = isBlocked;
+  }
+
+  const updatedUser = await user.save();
+
+  res.json({
+    success: true,
+    user: {
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      role: updatedUser.role,
+      isBlocked: updatedUser.isBlocked
+    }
+  });
 });
 
 // @desc    Modifier le rôle d’un utilisateur

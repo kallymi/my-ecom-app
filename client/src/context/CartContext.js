@@ -34,21 +34,20 @@ export const CartProvider = ({ children }) => {
         try {
           const cartData = await cartService.getCart();
 
-          if (
-            cartData?.items &&
-            cartData.items.every(item => item.product && typeof item.product === "object")
-          ) {
-            setCart(
-              cartData.items.map(item => ({
-                product: item.product,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
-                originalPrice: item.originalPrice,
-                discountRate: item.discountRate,
-                discountAmount: item.discountAmount,
-                isPromoApplied: item.isPromoApplied
-              }))
-            );
+          if ( cartData?.items ) {
+           const syncedCart = cartData.items.map(item => ({
+              
+              product: item.product,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              originalPrice: item.originalPrice,
+              discountRate: item.discountRate,
+              discountAmount: item.discountAmount,
+              isPromoApplied: item.isPromoApplied
+            }));
+            // CRITIQUE : Au lieu de juste setCart, on s'assure de prendre 
+            // la version la plus à jour (backend)
+            setCart(syncedCart);
           }
         } catch (err) {
           console.error("Erreur sync backend :", err);
@@ -64,12 +63,12 @@ export const CartProvider = ({ children }) => {
   // ===============================
   // LocalStorage
   // ===============================
+  // --- CORRECTION : Sauvegarder TOUJOURS dans le localStorage ---
   useEffect(() => {
-    if (!initializing && !isAuthenticated) {
+    if (!initializing) {
       localStorage.setItem("cart", JSON.stringify(cart));
     }
-  }, [cart, isAuthenticated, initializing]);
-
+  }, [cart, initializing]);
   // ===============================
   // Actions
   // ===============================

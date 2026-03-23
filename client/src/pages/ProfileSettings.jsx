@@ -53,9 +53,7 @@ const ProfileSettings = () => {
         email: infoData.email.trim().toLowerCase()
       };
 
-      const res = await api.put("/users/me", dataToSend, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.put("/users/me", dataToSend );
 
       if (res.data.success) {
 
@@ -93,9 +91,7 @@ const ProfileSettings = () => {
     setLoading(true);
     try {
       // ✅ Correction de l'URL : /me/password au lieu de /update-password
-      const res = await api.put("/users/me/password", passwordData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const res = await api.put("/users/me/password", passwordData );
       
       if (res.data.success) {
         toast.success("Sécurité mise à jour");

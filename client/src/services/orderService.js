@@ -43,5 +43,16 @@ export const orderService = {
   updateOrderStatus: async (orderId, statusData) => {
     const response = await api.put(`/orders/${orderId}`, statusData);
     return response.data;
-  }
+  },
+
+  requestReturn: async (orderId) => {
+    const response = await api.put(`/orders/${orderId}/request-return`);
+    return response.data;
+  },
+
+  confirmReturn: async (orderId) => {
+    const response = await api.put(`/orders/${orderId}/confirm-return`);
+    return response.data;
+  },
+
 };

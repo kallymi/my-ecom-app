@@ -10,16 +10,21 @@ export default function AdminLayout() {
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
       
-      {/* Sidebar : On passe l'état et la fonction de fermeture */}
+      {/* Sidebar : gère son propre affichage (fixe sur mobile/tablette, permanent sur desktop via Sidebar.jsx) */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex-1 flex flex-col min-w-0">
+      {/* Le conteneur flex-1 doit avoir une marge à gauche (ML) 
+          égale à la largeur de la sidebar pour ne pas être recouvert.
+          On l'aligne sur les points de rupture de ta Sidebar.
+      */}
+      <div className="flex-1 flex flex-col min-w-0 transition-all duration-500 md:ml-60 lg:ml-72">
         
         {/* Header : On passe la fonction d'ouverture */}
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
         <main className="flex-1">
-          <div className="p-4 md:p-10 max-w-[1600px] mx-auto">
+          {/* Ajustement du padding sur tablette (md:p-6) pour gagner de la place */}
+          <div className="p-4 md:p-6 lg:p-10 max-w-[1600px] mx-auto">
             <Outlet />
           </div>
         </main>

@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const bcrypt = require("bcryptjs"); // Inutile ici si le hachage se fait dans le modèle (pre-save hook)
 const User = require('../models/userModel');
 const jwt = require('jsonwebtoken');
 
@@ -6,7 +7,21 @@ const sendEmail = require('../utils/sendEmail');
 const generateOTP = require('../utils/generateOTP');
 
 /* =========================
-   JWT
+   JWT & COOKIES
+========================= */
+const getCookieOptions = () => {
+  const isProduction = process.env.NODE_ENV === 'production';
+
+  return {
+    httpOnly: true,
+    secure: false, // ⚠️ IMPORTANT en local (IP)
+    sameSite: 'lax',
+    path: '/',
+  };
+};
+
+/* =========================
+   JWT & COOKIES
 ========================= */
 const generateToken = (user) => {
   return jwt.sign(
@@ -16,11 +31,28 @@ const generateToken = (user) => {
   );
 };
 
+const sendTokenResponse = (user, statusCode, res, message) => {
+  const token = generateToken(user);
+
+  const options = getCookieOptions();
+
+  res
+    .status(statusCode)
+    .cookie('token', token, options)
+    .json({
+      success: true,
+      message,
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+};
+
 /* =========================
-   REGISTER (avec OTP)
-========================= */
-/* =========================
-    REGISTER (CORRIGÉ)
+    REGISTER
 ========================= */
 exports.register = async (req, res) => {
   try {
@@ -30,7 +62,6 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'Tous les champs sont obligatoires' });
     }
 
-    // Nettoyage des données (évite les bugs mobile majuscules/espaces)
     const cleanEmail = email.toLowerCase().trim();
 
     const existingUser = await User.findOne({ email: cleanEmail });
@@ -44,13 +75,12 @@ exports.register = async (req, res) => {
     const user = await User.create({
       name,
       email: cleanEmail,
-      password,
+      password, // Sera haché par le pre('save') hook du User model
       isVerified: false,
       otp: hashedOtp,
       otpExpiresAt: Date.now() + 10 * 60 * 1000 
     });
 
-    // On essaie d'envoyer l'email mais on ne bloque pas si ça échoue
     try {
       await sendEmail({
         to: cleanEmail,
@@ -59,24 +89,46 @@ exports.register = async (req, res) => {
       });
     } catch (mailError) {
       console.error("Erreur d'envoi d'email:", mailError);
-      // Optionnel : on peut informer l'utilisateur que le compte est créé 
-      // mais qu'il devra cliquer sur "Renvoyer l'OTP"
     }
 
-    // RÉPONSE SYSTÉMATIQUE
     return res.status(201).json({
+      success: true,
       message: 'Compte créé. Vérifiez votre email avec le code OTP.'
     });
 
   } catch (error) {
-    console.error('REGISTER ERROR:', error);
-    // On s'assure de toujours renvoyer une réponse même en cas d'erreur crash
-    if (!res.headersSent) {
-        return res.status(500).json({ message: "Erreur lors de l'inscription" });
-    }
+    console.error("Erreur Register:", error);
+    return res.status(500).json({ 
+        success: false,
+        message: "Erreur lors de l'inscription",
+        error: error.message 
+    });
   }
 };
 
+/* =========================
+   GET ME (Récupérer profil)
+========================= */
+exports.getMe = async (req, res) => {
+  try {
+    // 🛡️ CRITIQUE : Empêche le navigateur (surtout sur IP réseau) 
+    // de mettre en cache cette réponse de session.
+    res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+
+    res.status(200).json({
+      success: true,
+      user: req.user // req.user est rempli par ton middleware de protection (protect)
+    });
+  } catch (error) {
+    console.error("Erreur GetMe:", error);
+    res.status(500).json({ 
+      success: false, 
+      message: "Erreur lors de la récupération du profil" 
+    });
+  }
+};
 
 /* =========================
    VERIFY OTP
@@ -84,11 +136,16 @@ exports.register = async (req, res) => {
 exports.verifyOtp = async (req, res) => {
   try {
     const { email, otp } = req.body;
+    
+    if (!email || !otp) {
+      return res.status(400).json({ message: 'Email et OTP requis' });
+    }
 
+    const cleanEmail = email.toLowerCase().trim();
     const hashedOtp = crypto.createHash('sha256').update(otp).digest('hex');
 
     const user = await User.findOne({
-      email,
+      email: cleanEmail,
       otp: hashedOtp,
       otpExpiresAt: { $gt: Date.now() }
     });
@@ -102,19 +159,10 @@ exports.verifyOtp = async (req, res) => {
     user.otpExpiresAt = undefined;
     await user.save();
 
-    res.json({
-      message: 'Compte vérifié avec succès',
-      token: generateToken(user),
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
-    });
-
+    sendTokenResponse(user, 200, res, 'Compte vérifié avec succès');
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Erreur Verify OTP:", error);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
 
@@ -125,7 +173,12 @@ exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await User.findOne({ email }).select('+password');
+    if (!email || !password) {
+      return res.status(400).json({ message: 'Veuillez fournir un email et un mot de passe' });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: cleanEmail }).select('+password');
 
     if (!user) {
       return res.status(401).json({ message: 'Identifiants invalides' });
@@ -137,47 +190,68 @@ exports.login = async (req, res) => {
 
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: 'Identifiants invalides' });
+      return res.status(401).json({ message: 'Identifiants incorrects, vérifiez votre email ou password' });
     }
 
-    res.json({
-      token: generateToken(user),
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
-    });
-
+    sendTokenResponse(user, 200, res, 'Connexion réussie');
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Erreur Login:", error);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
 
 /* =========================
-   FORGOT PASSWORD (OTP)
+   LOGOUT
 ========================= */
-exports.forgotPassword = async (req, res) => {
-  const { email } = req.body;
+exports.logout = async (req, res) => {
+  const options = getCookieOptions();
 
-  const user = await User.findOne({ email });
-  if (!user) {
-    return res.status(404).json({ message: 'Utilisateur introuvable' });
-  }
-
-  const otp = generateOTP();
-  user.otp = crypto.createHash('sha256').update(otp).digest('hex');
-  user.otpExpiresAt = Date.now() + 10 * 60 * 1000;
-  await user.save();
-
-  await sendEmail({
-    to: email,
-    subject: 'Réinitialisation du mot de passe',
-    text: `Votre code OTP est : ${otp}`
+  res.cookie('token', '', {
+    options,
+    expires: new Date(0)
+    
   });
 
-  res.json({ message: 'OTP envoyé par email' });
+  res.status(200).json({ 
+    success: true, 
+    message: "Déconnexion réussie" 
+  });
+};
+
+/* =========================
+   FORGOT PASSWORD
+========================= */
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ message: "L'email est requis" });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: cleanEmail });
+    
+    if (!user) {
+      return res.status(404).json({ message: 'Utilisateur introuvable' });
+    }
+
+    const otp = generateOTP();
+    user.otp = crypto.createHash('sha256').update(otp).digest('hex');
+    user.otpExpiresAt = Date.now() + 10 * 60 * 1000; // Valide 10 minutes
+    await user.save();
+
+    await sendEmail({
+      to: cleanEmail,
+      subject: 'Réinitialisation du mot de passe',
+      text: `Votre code OTP est : ${otp}`
+    });
+
+    res.json({ success: true, message: 'OTP envoyé par email' });
+  } catch (error) {
+    console.error("Erreur Forgot Password:", error);
+    res.status(500).json({ message: "Erreur serveur" });
+  }
 };
 
 /* =========================
@@ -187,7 +261,12 @@ exports.resendOtp = async (req, res) => {
   try {
     const { email } = req.body;
 
-    const user = await User.findOne({ email });
+    if (!email) {
+      return res.status(400).json({ message: "L'email est requis" });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const user = await User.findOne({ email: cleanEmail });
 
     if (!user) {
       return res.status(404).json({ message: 'Utilisateur introuvable' });
@@ -203,55 +282,58 @@ exports.resendOtp = async (req, res) => {
     await user.save();
 
     await sendEmail({
-      to: email,
+      to: cleanEmail,
       subject: 'Nouveau code de vérification',
       text: `Votre nouveau code OTP est : ${otp}`
     });
 
-    res.json({ message: 'Nouveau code OTP envoyé' });
-
+    res.json({ success: true, message: 'Nouveau code OTP envoyé' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error("Erreur Resend OTP:", error);
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
-
 
 /* =========================
    RESET PASSWORD
 ========================= */
-
 exports.resetPassword = async (req, res) => {
-  const { otp, password } = req.body;
+  try {
+    const { otp, password, email } = req.body;
 
-  if (!otp || !password) {
-    return res.status(400).json({ message: "OTP et mot de passe requis" });
+    if (!otp || !password || !email) {
+      return res.status(400).json({ message: "Email, OTP et mot de passe requis" });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+    const hashedOtp = crypto.createHash("sha256").update(otp).digest("hex");
+
+    const user = await User.findOne({
+      email: cleanEmail,
+      otp: hashedOtp,
+      otpExpiresAt: { $gt: Date.now() },
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "OTP invalide ou expiré" });
+    }
+
+    // Le hachage du mot de passe doit être géré par votre middleware pre('save') dans le userModel
+    user.password = password; 
+    
+    // Nettoyage des champs OTP
+    user.otp = undefined;
+    user.otpExpiresAt = undefined;
+
+    await user.save();
+
+    res.json({
+      success: true,
+      message: "Mot de passe réinitialisé avec succès",
+    });
+
+  } catch (error) {
+    console.error("Erreur Reset Password:", error);
+    res.status(500).json({ message: "Erreur serveur" });
   }
-
-  const hashedOtp = crypto
-    .createHash("sha256")
-    .update(otp)
-    .digest("hex");
-
-  console.log("OTP reçu:", otp);
-  console.log("OTP hashé:", hashedOtp);
-
-  const user = await User.findOne({
-    otp: hashedOtp,
-    otpExpiresAt: { $gt: Date.now() },
-  });
-
-  if (!user) {
-    return res.status(400).json({ message: "OTP invalide ou expiré" });
-  }
-
-  user.password = password;
-  user.otp = undefined;
-  user.otpExpiresAt = undefined;
-
-  await user.save();
-
-  res.json({ message: "Mot de passe réinitialisé avec succès" });
 };
-
-
-

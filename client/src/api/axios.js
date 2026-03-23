@@ -1,42 +1,37 @@
 import axios from 'axios';
 
 // 1. Nettoyage de l'URL
-const rawUrl = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const rawUrl = process.env.REACT_APP_API_URL || 'http://172.16.36.89:5000'; // Priorité à l'IP réseau
 const CLEAN_URL = rawUrl.replace(/["';]/g, "").trim();
 
-console.log("🛠 TEST CONNEXION AXIOS vers :", CLEAN_URL);
-/**
- * 2. Construction de l'URL de base avec /api
- * On vérifie si CLEAN_URL finit déjà par /api pour ne pas le mettre deux fois
- */
 const BASE_API_URL = CLEAN_URL.endsWith('/api') 
   ? CLEAN_URL 
   : `${CLEAN_URL}/api`;
 
 const api = axios.create({
   baseURL: BASE_API_URL,
+  // 🛡️ CRUCIAL : Permet au navigateur d'inclure le cookie 'token' dans chaque requête
+  withCredentials: true, 
   headers: {
     'Content-Type': 'application/json'
   }
 });
 
-// LOG DE DEBUG : Clique sur ce lien dans ta console F12 pour vérifier s'il affiche tes produits
-console.log("🔌 Instance Axios connectée sur :", BASE_API_URL);
-
-// 3. Intercepteur pour le Token JWT
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+/**
+ * 2. Intercepteur de Réponse (Optionnel mais recommandé)
+ * Si le serveur renvoie une 401 (Non autorisé), on peut forcer la déconnexion
+ * propre côté client si le cookie est expiré.
+ */
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Si on reçoit une 401, cela signifie que le cookie n'est plus valide
+      // On peut nettoyer le localStorage par précaution
+      localStorage.removeItem('user');
     }
-    return config;
-  },
-  (error) => Promise.reject(error)
+    return Promise.reject(error);
+  }
 );
 
 export default api;
-
-
-
-

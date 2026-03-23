@@ -115,17 +115,30 @@ const updateOrderStatus = asyncHandler(async (req, res) => {
     order.paidAt = now;
     order.isRevenueCounted = false;
 
+
+    let maxDeadline = now;
+
     // Utilise une boucle map pour garantir la création du tableau
     order.items = order.items.map(item => {
         const delay = item.product?.returnDelay || 2;
-        const deadline = new Date(now);
-        deadline.setDate(deadline.getDate() + delay);
+        const itemDeadline = new Date(now);
+        itemDeadline.setDate(itemDeadline.getDate() + delay);
+
+        // On met a jour la deadline globale de la commande si celle-ci est plus lointaine
+
+        if (itemDeadline > maxDeadline) {
+          maxDeadline = itemDeadline;
+        }
         
         return {
-            ...item.toObject(), // Garde les données existantes
-            returnDeadline: deadline
+            ...(item.toObject ? item.toObject() : item), // Garde les données existantes
+            returnDeadline: itemDeadline
         };
     });
+
+    // On enregistre La date de validation finale pour le chiffre d'affaire valide 
+    order.finalReturnDeadline = maxDeadline;
+
 
     order.markModified('items'); 
   }
@@ -241,59 +254,108 @@ const approveOrderReturn = asyncHandler(async (req, res) => {
 });
 
 /* ======================================================
-   @desc    REJETER le retour
+   @desc    REJETER le retour avec motif
    @route   PUT /api/admin/orders/:id/reject-return
 ====================================================== */
 const rejectOrderReturn = asyncHandler(async (req, res) => {
+    const { reason } = req.body; // Très utile pour l'expérience client
     const order = await Order.findById(req.params.id);
-    if (!order) return res.status(404).json({ message: "Commande non trouvée" });
 
-    // Si on rejette, on remet en DELIVERED (considéré comme vendu)
-    order.status = 'DELIVERED'; 
+    if (!order) {
+        return res.status(404).json({ message: "Commande non trouvée" });
+    }
+
+    // Vérification de sécurité
+    if (order.status !== 'RETURN_REQUESTED') {
+        return res.status(400).json({ message: "Cette commande n'est pas en attente de retour" });
+    }
+
+    // Passage au statut spécifique de refus
+    order.status = 'RETURN_REJECTED'; 
+    
+    // Ajout d'un champ pour tracer le motif du refus (à ajouter dans ton modèle Order)
+    order.adminNotes = reason || "Aucun motif précisé";
+    order.returnRejectedAt = Date.now();
     
     await order.save();
-    res.json({ success: true, message: "Demande de retour rejetée" });
+    
+    res.json({ 
+        success: true, 
+        message: "Demande de retour rejetée avec succès",
+        order 
+    });
 });
 
 /* ======================================================
-   @desc    Obtenir les données de revenus pour le graphique
-   @route   GET /api/admin/orders/analytics
+   @desc    Obtenir les données de revenus (Validé vs En attente)
+   @route   GET /api/orders/analytics
    @access  Admin
 ====================================================== */
 const getRevenueAnalytics = asyncHandler(async (req, res) => {
   const { period } = req.query; // "week" ou "month"
-  const now = new Date();
+  const currentDate = new Date();
   let startDate = new Date();
 
   // Configuration de la fenêtre de tir
   if (period === 'month') {
-    startDate.setDate(now.getDate() - 30); // 30 derniers jours
+    startDate.setDate(currentDate.getDate() - 30);
   } else {
-    startDate.setDate(now.getDate() - 7);  // 7 derniers jours
+    startDate.setDate(currentDate.getDate() - 7);
   }
 
-  const stats = await Order.aggregate([
-    {
-      $match: {
-        createdAt: { $gte: startDate },
-        status: { $nin: ['CANCELLED', 'RETURNED'] } // On garde le CA "propre"
-      }
-    },
-    {
-      $group: {
-        _id: { 
-          // On groupe par jour formaté pour le frontend
-          $dateToString: { format: "%d/%m", date: "$createdAt" } 
-        },
-        revenue: { $sum: "$totalPrice" }, // Assure-toi que c'est le bon champ dans ton Model
-        rawDate: { $first: "$createdAt" } 
-      }
-    },
-    { $sort: { "rawDate": 1 } } // Tri chronologique indispensable
-  ]);
+  try {
+    // Ton contrôleur devient très léger
+    const stats = await Order.aggregate([
+      {
+        $match: {
+          createdAt: { $gte: startDate },
+          status: { $nin: ['CANCELLED', 'RETURNED'] }
+        }
+      },
+      {
+        $group: {
+          _id: { $dateToString: { format: "%d/%m", date: "$createdAt" } },
+          rawDate: { $first: "$createdAt" },
+          // Ici, on utilise directement ton flag métier
+          caValide: {
+            $sum: { $cond: [{ $eq: ["$isRevenueCounted", true] }, "$totalAmount", 0] }
+          },
+          enAttente: {
+            $sum: { $cond: [{ $eq: ["$isRevenueCounted", false] }, "$totalAmount", 0] }
+          }
+        }
+      },
+      { $sort: { "rawDate": 1 } }
+    ]);
 
-  // Si pas de données, on renvoie un tableau vide pour éviter le crash Recharts
-  res.json(stats.map(s => ({ name: s._id, revenue: s.revenue })));
+    // Formatage pour le graphique Recharts
+    const chartData = stats.map(s => ({
+      name: s._id,
+      caValide: s.caValide || 0, // Sécurité anti-undefined
+      enAttente: s.enAttente || 0
+    }));
+
+    const totals = chartData.reduce((acc, curr) => {
+      acc.totalValide += curr.caValide;
+      acc.totalAttente += curr.enAttente;
+      return acc;
+    }, { totalValide: 0, totalAttente: 0 });
+
+    res.json({
+      success: true,
+      chartData,
+      totals
+    });
+    
+  } catch (error) {
+    // 🔥 Si MongoDB plante, on le saura ici au lieu d'un 500 muet
+    console.error("Erreur Analytics Aggregation:", error.stack);
+    res.status(500).json({ 
+      success: false, 
+      message: "Erreur lors du calcul des statistiques",
+      error: error.message 
+    });
+  }
 });
 
 /* ======================================================

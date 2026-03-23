@@ -120,6 +120,7 @@ const orderSchema = new mongoose.Schema(
         'DELIVERED',
         'RETURN_REQUESTED',
         'RETURNED',
+        'RETURN_REJECTED',
         'CANCELLED',
         'RETURNED_COMPLETED'
       ],
@@ -130,6 +131,7 @@ const orderSchema = new mongoose.Schema(
     /* ---------- DATES ---------- */
     deliveredAt: Date,
     returnedAt: Date,
+    finalReturnDeadline: { type: Date, index: true },
 
     /* ---------- BUSINESS ---------- */
     isRevenueCounted: {
@@ -167,16 +169,16 @@ orderSchema.virtual('isReturnable').get(function () {
 });
 
 // 💰 Éligible au CA ?
+// 💰 Éligible au CA ?
 orderSchema.virtual('isEligibleForRevenue').get(function () {
   if (this.status !== 'DELIVERED') return false;
-  if (this.isRevenueCounted) return false;
+  if (this.isRevenueCounted) return true; // Si déjà forcé par l'admin
+
+  if (!this.finalReturnDeadline) return false;
 
   const now = new Date();
-  return this.items.every(
-    item => item.returnDeadline && item.returnDeadline < now
-  );
+  return this.finalReturnDeadline < now;
 });
-
 /* ============================
    EXPORT
 ============================ */

@@ -7,12 +7,15 @@ import {
 } from 'lucide-react';
 
 const Profile = () => {
-  const { user, logout } = useAuth();
+  const { user, logout} = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user) navigate('/login');
-  }, [user, navigate]);
+    if (user) {
+    } else {
+      navigate('/login');
+    } 
+  }, []);
 
   if (!user) return null;
 
@@ -86,7 +89,7 @@ const Profile = () => {
           {/* Section: Sécurité & Système */}
           <Section title="Compte & Sécurité">
             <div className="grid grid-cols-1 gap-4">
-                <InfoItem icon={<Calendar size={16}/>} label="Membre depuis" value={new Date(user.createdAt).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'})} />
+                <InfoItem icon={<Calendar size={16}/>} label="Membre depuis" value={user?.createdAt ? new Date(user.createdAt).toLocaleDateString('fr-FR', {month: 'long', year: 'numeric'}) : "Date inconnue"} />
                 <InfoItem icon={<Shield size={16}/>} label="Niveau d'accès" value={user.role === 'admin' ? 'Accès Total' : 'Client Standard'} />
             </div>
             

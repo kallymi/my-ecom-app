@@ -8,12 +8,12 @@ const startRevenueTask = () => {
     const now = new Date();
 
     try {
-      // On cherche les commandes DELIVERED dont TOUS les articles ont dépassé le deadline
+      // On utilise le Snapshot racine, c'est bien plus sécurisé
       const result = await Order.updateMany(
         {
           status: 'DELIVERED',
           isRevenueCounted: false,
-          'items.returnDeadline': { $lt: now }
+          finalReturnDeadline: { $exists: true, $ne: null, $lt: now }
         },
         { $set: { isRevenueCounted: true } }
       );

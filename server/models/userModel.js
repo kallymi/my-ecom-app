@@ -5,28 +5,26 @@ const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: true,
+      required: [true, "Le nom est obligatoire"],
       trim: true
     },
 
     email: {
       type: String,
-      required: true,
+      required: [true, "L'email est obligatoire"],
       unique: true,
       lowercase: true,
-      trim: true
+      trim: true,
+      index: true // ⚡ Accélère les recherches au login
     },
 
     password: {
       type: String,
-      required: true,
-      minlength: 6,
-      select: false
+      required: [true, "Le mot de passe est obligatoire"],
+      minlength: [6, "Le mot de passe doit faire au moins 6 caractères"],
+      select: false // 🛡️ Ne jamais retourner le password par défaut
     },
 
-    /* ======================
-       VÉRIFICATION EMAIL / OTP
-    ====================== */
     isVerified: {
       type: Boolean,
       default: false
@@ -34,26 +32,23 @@ const userSchema = new mongoose.Schema(
 
     otp: {
       type: String,
-      select: false
+      select: false // 🛡️ Cache l'OTP des résultats de requêtes classiques
     },
 
     otpExpiresAt: {
       type: Date
     },
 
-    /* ======================
-       INFOS UTILISATEUR
-    ====================== */
     phone: {
       type: String,
       trim: true,
-      deafult: ""
+      default: ""
     },
 
     neighborhood: {
       type: String,
       trim: true,
-      deafult: ""
+      default: ""
     },
 
     avatar: {
@@ -61,10 +56,6 @@ const userSchema = new mongoose.Schema(
       default: '/uploads/avatars/default.png'
     },
 
-    /* ======================
-       RÔLES & STATUT
-       🔁 customer → user
-    ====================== */
     role: {
       type: String,
       enum: ['user', 'admin'],
@@ -84,28 +75,47 @@ const userSchema = new mongoose.Schema(
     lastActive: {
       type: Date,
       default: Date.now
-    }
+    },
+    
+    passwordChangedAt: Date
   },
-  { timestamps: true }
+  { 
+    timestamps: true // Crée automatiquement createdAt et updatedAt
+  }
 );
 
-/* ======================
-   HASH PASSWORD
-====================== */
+/* ==========================================================
+   MIDDLEWARES (HOOKS)
+========================================================== */
+
+// Hachage du mot de passe avant sauvegarde
 userSchema.pre('save', async function () {
+  // 1. Si le mot de passe n'est pas modifié, on sort directement
+  // Pas besoin de next(), le 'return' suffit car la fonction est async
   if (!this.isModified('password')) return;
+
+  // 2. Hachage avec un coût (salt) de 12
   const salt = await bcrypt.genSalt(12);
   this.password = await bcrypt.hash(this.password, salt);
+
+  // 3. Mise à jour de la date de modification
+  if (!this.isNew) {
+    this.passwordChangedAt = Date.now() - 1000; 
+  }
+  
 });
 
-/* ======================
-   COMPARE PASSWORD
-====================== */
+/* ==========================================================
+   MÉTHODES DE MODÈLE
+========================================================== */
+
+// Comparaison sécurisée des mots de passe
 userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
+  // 'this.password' est accessible car on l'aura 'select' manuellement dans le controller
+  return await bcrypt.compare(candidatePassword, this.password);
 };
 
-/* ======================
-   EXPORT SAFE
-====================== */
+/* ==========================================================
+   EXPORT
+========================================================== */
 module.exports = mongoose.models.User || mongoose.model('User', userSchema);

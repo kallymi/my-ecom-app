@@ -31,12 +31,18 @@ export default function EditUser() {
     e.preventDefault();
     setUpdating(true);
     try {
+      // On envoie l'objet user complet pour éviter les manques au backend
       await api.put(`/admin/users/${id}`, {
+        name: user.name,
+        email: user.email.toLowerCase(), // Respect de ta consigne : email en minuscules
         role: user.role,
         isBlocked: user.isBlocked
       });
+      
+      // Optionnel : un petit toast de succès ici serait top
       navigate("/admin/users");
     } catch (err) {
+      console.error("Erreur PUT:", err.response?.data);
       alert(err.response?.data?.message || "Erreur de mise à jour");
     } finally {
       setUpdating(false);
@@ -129,8 +135,8 @@ export default function EditUser() {
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <RoleButton 
-                    active={user.role === "customer"}
-                    onClick={() => setUser({ ...user, role: "customer" })}
+                    active={user.role === "user"}
+                    onClick={() => setUser({ ...user, role: "user" })}
                     icon={<User size={24} />}
                     label="Client"
                     description="Accès standard à la boutique"

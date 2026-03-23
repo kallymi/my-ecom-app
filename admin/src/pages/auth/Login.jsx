@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import api from "../../api/axios";
 import { useAuth } from "../../auth/AuthContext";
+import { useEffect } from "react";
 
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
@@ -21,28 +22,55 @@ export default function AdminLogin() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
 
+
+
+  // Redire automatiquement si deja connecte 
+  useEffect(() => {
+    if (!loading && user && user.role === "admin") {
+        navigate("/admin", { replace: true });
+    }
+  }, [user, loading, navigate]);
+
+  // si on est en train de charger l'auth, on affiche rien ou un loader
+  if(loading) return null;
+  
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError(null);
 
     try {
-      const res = await api.post("/auth/login", { email, password });
 
-      if (res.data.user.role !== "admin") {
+      const res = await api.post("/auth/login", {
+        email,
+        password
+      });
+
+      const user = res.data.user;
+
+      if (!user || user.role !== "admin") {
         setError("ACCÈS REFUSÉ : PRIVILÈGES INSUFFISANTS");
         setLoading(false);
         return;
       }
 
-      localStorage.setItem("adminToken", res.data.token);
-      login(res.data.user);
+      login(user);
+
       navigate("/admin", { replace: true });
+
     } catch (err) {
-      setError(err.response?.data?.message || "IDENTIFIANTS INCORRECTS");
+
+      console.error("LOGIN ERROR:", err);
+
+      setError(
+        err.response?.data?.message ||
+        "IDENTIFIANTS INCORRECTS"
+      );
+
+    } finally {
       setLoading(false);
     }
   };

@@ -126,12 +126,12 @@ export default function EditProduct() {
         {/* --- HEADER FIXE --- */}
         <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
           <div className="space-y-2">
-            <button 
-              onClick={() => navigate(-1)} 
-              className="flex items-center text-gray-400 hover:text-indigo-600 font-bold uppercase text-[10px] tracking-[0.2em] transition-all group"
+            <button
+              onClick={() => navigate("/admin/products")}
+              className="flex items-center text-gray-400 hover:text-indigo-600 mb-10 font-black uppercase text-[10px] tracking-widest"
             >
-              <ArrowLeft size={14} className="mr-2 group-hover:-translate-x-1 transition-transform" /> 
-              Retour Catalogue
+              <ArrowLeft size={16} className="mr-2" />
+              Retour inventaire
             </button>
             <h1 className="text-3xl md:text-5xl font-[1000] tracking-tighter text-slate-900 uppercase italic leading-none">
               Edition<span className="text-indigo-600">.</span>
