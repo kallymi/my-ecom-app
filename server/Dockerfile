@@ -15,7 +15,7 @@ COPY . .
 
 # 6. Ton serveur écoute sur un port (souvent 3000 ou 5000)
 # Vérifie dans ton server.js quel port tu utilises
-EXPOSE 3000
+EXPOSE 5000
 
 # 7. La commande pour lancer le serveur (celle de ton package.json)
 CMD ["npm", "start"]
