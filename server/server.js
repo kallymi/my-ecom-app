@@ -48,9 +48,8 @@ app.use(
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:5174",
-        "http://192.168.100.6:3000",
-        "http://192.168.100.6:5173",
-        "http://192.168.100.6:5174"
+        process.env.CLIENT_URL,
+        process.env.ADMIN_URL
       ];
 
       if (allowedOrigins.indexOf(origin) !== -1) {
@@ -85,9 +84,8 @@ const io = new Server(server, {
       "http://localhost:3000",
       "http://localhost:5173",
       "http://localhost:5174",
-      "http://192.168.100.6:3000",
-      "http://192.168.100.6:5173",
-      "http://192.168.100.6:5174",
+      process.env.CLIENT_URL, // URL de ton site client sur Dokploy
+      process.env.ADMIN_URL
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
