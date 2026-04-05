@@ -23,6 +23,8 @@ const Cart = () => {
     cartTotal,
     totalItems,
     totalSavings,
+    checkout,
+    loading: cartLoading
   } = useCart();
 
   const { isAuthenticated } = useAuth();
@@ -53,31 +55,39 @@ const Cart = () => {
       return;
     }
 
-    setLoading(true);
+    // setLoading(true);
+    // const orderData = {
+    //   shippingAddress: formData,
+    //   paymentMethod: "COD",
+    //   isGuest: true,
+    //   items: cart.map(item => ({
+    //     product: item.product._id,
+    //     quantity: item.quantity,
+    //     price: item.product.finalPrice || item.product.price
+    //   }))
+    // };
+
     const orderData = {
       shippingAddress: formData,
       paymentMethod: "COD",
-      isGuest: true,
-      items: cart.map(item => ({
-        product: item.product._id,
-        quantity: item.quantity,
-        price: item.product.finalPrice || item.product.price
-      }))
+      // On passe les infos nécessaires à ta nouvelle fonction checkout du context
+      isDirectOrder: false // C'est une commande par panier, donc false
     };
 
     try {
-      const { data } = await api.post("/orders", orderData);
-      if (data?.success) {
-        clearCart();
+      // On utilise la fonction centralisée du context
+      const res = await checkout(orderData);
+      
+      if (res && (res.success || res._id)) {
+        // La navigation doit se faire immédiatement
+        // Le panier est déjà vidé par le context.checkout()
         navigate("/order-confirmation", { 
-          state: { order: data.order },
+          state: { order: res.order || res },
           replace: true 
         });
       }
     } catch (err) {
-      alert(err.response?.data?.message || "Erreur lors de la commande");
-    } finally {
-      setLoading(false);
+      console.error("Erreur commande rapide:", err);
     }
   };
 
@@ -224,16 +234,20 @@ const Cart = () => {
                           <MapPinIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
                           <input required name="neighborhood" placeholder="QUARTIER" onChange={handleInputChange} className="w-full pl-11 pr-4 py-5 bg-gray-50 rounded-2xl font-bold text-[clamp(0.7rem,2vw,0.9rem)] uppercase tracking-widest border-transparent focus:ring-2 focus:ring-indigo-500 transition-all" />
                         </div>
+                        <div className="relative">
+                          <MapPinIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-300" />
+                          <input required name="neighborhood" placeholder="DETAILS" onChange={handleInputChange} className="w-full pl-11 pr-4 py-5 bg-gray-50 rounded-2xl font-bold text-[clamp(0.7rem,2vw,0.9rem)] uppercase tracking-widest border-transparent focus:ring-2 focus:ring-indigo-500 transition-all" />
+                        </div>
                     </div>
                   </div>
                   
                   <div className="space-y-3 pt-4">
                     <button
-                      disabled={loading}
+                      disabled={cartLoading}
                       onClick={submitQuickOrder}
                       className="w-full bg-indigo-600 text-white py-6 rounded-2xl font-black uppercase text-[clamp(0.7rem,2vw,0.9rem)] tracking-widest shadow-xl shadow-indigo-200 disabled:opacity-50 flex items-center justify-center gap-3 active:scale-95 transition-all"
                     >
-                      {loading ? "TRAITEMENT EN COURS..." : "CONFIRMER L'ACHAT"}
+                      {cartLoading ? "TRAITEMENT EN COURS..." : "CONFIRMER L'ACHAT"}
                     </button>
 
                     <button onClick={() => setShowQuickOrder(false)} className="w-full text-[clamp(0.7rem,2vw,0.9rem)] font-black uppercase text-gray-300 hover:text-black tracking-[0.2em] py-2 transition-all">

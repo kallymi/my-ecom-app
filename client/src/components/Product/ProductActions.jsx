@@ -16,7 +16,6 @@ Quantité : ${quantity}
 Prix total : ${(product.finalPrice || product.price) * quantity} F
 Lien : ${window.location.href}`;
     
-    // Remplace par ton numéro WhatsApp (format international sans le +)
     const phoneNumber = "23566268256"; 
     window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, "_blank");
   };
@@ -24,7 +23,7 @@ Lien : ${window.location.href}`;
   return (
     <div className="flex flex-col gap-4 w-full pt-4">
       
-      {/* 1. SÉLECTEUR DE QUANTITÉ (Design épuré) */}
+      {/* 1. SÉLECTEUR DE QUANTITÉ AVEC INDICATEUR DE STOCK */}
       {!outOfStock && (
         <div className="flex items-center justify-between p-1.5 bg-slate-100 rounded-[2rem] border border-slate-200/50 mb-2">
           <div className="flex items-center gap-1">
@@ -34,21 +33,32 @@ Lien : ${window.location.href}`;
             >
               <MinusIcon className="h-4 w-4 stroke-[3]" />
             </button>
+            
             <span className="w-14 text-center font-black text-slate-900 text-lg">{quantity}</span>
+            
             <button 
               onClick={() => setQuantity(q => Math.min(product.stock, q + 1))}
               className="w-12 h-12 flex items-center justify-center bg-white rounded-full shadow-sm hover:text-indigo-600 transition-all active:scale-90"
             >
               <PlusIcon className="h-4 w-4 stroke-[3]" />
             </button>
+
+            {/* INDICATEUR DE STOCK DYNAMIQUE */}
+            <div className="flex items-center gap-2 ml-4 pl-4 border-l border-slate-200">
+              <div className={`w-2 h-2 rounded-full animate-pulse ${
+                product.stock < 5 ? "bg-orange-500" : "bg-emerald-500"
+              }`} />
+              <span className={`text-[10px] font-black uppercase tracking-tight ${
+                product.stock < 5 ? "text-orange-600" : "text-emerald-600"
+              }`}>
+                {product.stock < 5 ? `Seulement ${product.stock} !` : "En stock"}
+              </span>
+            </div>
           </div>
-          <span className="pr-6 text-[10px] font-black uppercase text-slate-400 tracking-widest">
-            Quantité
-          </span>
         </div>
       )}
 
-      {/* 2. BOUTON ACHAT DIRECT (Noir - Autorité) */}
+      {/* 2. BOUTON ACHAT DIRECT (Checkout Rapide) */}
       <button
         disabled={outOfStock}
         onClick={() => onDirectBuy(product, quantity)}
@@ -62,7 +72,7 @@ Lien : ${window.location.href}`;
         {outOfStock ? "Produit épuisé" : "Acheter maintenant"}
       </button>
 
-      {/* 3. BOUTON WHATSAPP (Vert - Confiance) */}
+      {/* 3. BOUTON WHATSAPP */}
       {!outOfStock && (
         <button
           onClick={handleWhatsAppOrder}
@@ -73,9 +83,8 @@ Lien : ${window.location.href}`;
         </button>
       )}
 
-      {/* PETITE RÉASSURANCE EN DESSOUS */}
       <p className="text-[9px] text-center text-slate-400 font-bold uppercase tracking-widest mt-2">
-        Paiement sécurisé • Livraison express
+        Paiement à la livraison • Livraison rapide
       </p>
     </div>
   );

@@ -3,7 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import { productService } from '../services/productService';
 import ProductCard from './ProductCard';
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline';
+import { 
+  MagnifyingGlassIcon, 
+  ChevronLeftIcon, 
+  ChevronRightIcon 
+} from '@heroicons/react/24/outline';
 
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
@@ -11,168 +15,131 @@ const Shop = () => {
   const { addToCart } = useCart();
   const navigate = useNavigate();
 
+  // États principaux
   const [products, setProducts] = useState([]);
-  const [filteredProducts, setFilteredProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // Filtres et Tri
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [sortBy, setSortBy] = useState('newest');
 
-  // Pagination moderne
+  // Pagination Serveur
   const [page, setPage] = useState(1);
-  const [productsPerPage, setProductsPerPage] = useState(32);
+  const [totalPages, setTotalPages] = useState(1);
+  const [limit, setLimit] = useState(32);
 
-  // Responsive logique
+  // 1. Gestion du Responsive (Nombre d'articles par page)
   useEffect(() => {
     const handleResize = () => {
-      if (window.innerWidth < 768) {
-        setProductsPerPage(16);
-      } else {
-        setProductsPerPage(32);
-      }
+      setLimit(window.innerWidth < 768 ? 16 : 32);
     };
-
     handleResize();
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Load data
+  // 2. Chargement dynamique des données depuis le Backend
   useEffect(() => {
-    loadProducts();
-  }, []);
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        window.scrollTo({ top: 0, behavior: "smooth" });
 
-  const loadProducts = async () => {
-    try {
-      setLoading(true);
-      const res = await productService.getAllProducts();
+        // On construit les paramètres à envoyer au backend
+        const queryParams = {
+          page,
+          limit,
+          sort: sortBy,
+          ...(search && { search }),
+          ...(category && { category })
+        };
 
-      const list =
-        res?.products || res?.data || (Array.isArray(res) ? res : []);
+        // ASSURE-TOI que ton productService.getAllProducts accepte ces paramètres
+        const res = await productService.getAllProducts(queryParams);
 
-      setProducts(list);
-      setFilteredProducts(list);
+        const list = res?.data || [];
+        setProducts(list);
+        setTotalPages(res?.pagination?.totalPages || 1);
 
-      const uniqueCategories = [
-        ...new Set(
-          list
-            .map((p) =>
-              typeof p.category === "object"
-                ? p.category?.name
-                : p.category
-            )
-            .filter(Boolean)
-        ),
-      ];
+        // Extraction des catégories (idéalement, à faire via une route API dédiée /api/categories à l'avenir)
+        if (categories.length === 0 && list.length > 0) {
+          const categoryMap = new Map();
+          
+          list.forEach(p => {
+            if (p.category && typeof p.category === "object") {
+              // On sauvegarde l'ID comme clé, et le nom comme valeur
+              categoryMap.set(p.category._id, p.category.name);
+            }
+          });
 
-      setCategories(uniqueCategories);
-    } catch (err) {
-      setError("Erreur de chargement");
-    } finally {
-      setLoading(false);
-    }
-  };
+          // On transforme ça en tableau d'objets [{ id: "...", name: "..." }]
+          const uniqueCategories = Array.from(categoryMap, ([id, name]) => ({ id, name }));
+          setCategories(uniqueCategories);
+        }
 
-  // Filtrage + tri
+      } catch (err) {
+        console.error("Erreur Fetch:", err);
+        setError("Impossible de charger les produits.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // On relance le fetch à chaque fois qu'un filtre ou la page change
+    // Un léger délai (debounce) est appliqué nativement par la réactivité de React ici
+    const timeoutId = setTimeout(() => {
+      fetchProducts();
+    }, 300); // Évite de spammer le backend si l'utilisateur tape vite dans la barre de recherche
+
+    return () => clearTimeout(timeoutId);
+  }, [page, limit, search, category, sortBy]);
+
+  // 3. Reset de la page à 1 si l'utilisateur change un filtre
   useEffect(() => {
-    let result = [...products];
-
-    if (search) {
-      result = result.filter((p) =>
-        p.name?.toLowerCase().includes(search.toLowerCase())
-      );
-    }
-
-    if (category) {
-      result = result.filter(
-        (p) =>
-          (typeof p.category === "object"
-            ? p.category?.name
-            : p.category) === category
-      );
-    }
-
-    result.sort((a, b) => {
-      const priceA = a.finalPrice ?? a.price ?? 0;
-      const priceB = b.finalPrice ?? b.price ?? 0;
-
-      if (sortBy === "price-low") return priceA - priceB;
-      if (sortBy === "price-high") return priceB - priceA;
-
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    });
-
-    setFilteredProducts(result);
-    setPage(1); // reset page
-  }, [search, category, sortBy, products]);
-
-  // Pagination
-  const indexOfLast = page * productsPerPage;
-  const indexOfFirst = indexOfLast - productsPerPage;
-
-  const currentProducts = filteredProducts.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredProducts.length / productsPerPage);
-
-  // Scroll smooth
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, [page]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="animate-spin h-10 w-10 border-b-2 border-indigo-600 rounded-full" />
-      </div>
-    );
-  }
+    setPage(1);
+  }, [search, category, sortBy]);
 
   return (
     <div className="bg-[#fafafa] min-h-screen">
-
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-16">
 
         {/* HEADER */}
-        <div className="mb-10">
-          <h1 className="text-3xl md:text-6xl font-black uppercase tracking-tight">
-            Shop <span className="text-gray-300 italic">Global</span>
+        <div className="mb-10 text-center md:text-left">
+          <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tight text-gray-900">
+            Shop <span className="text-indigo-600 italic">Global</span>
           </h1>
-          {/* <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mt-2">
-            {filteredProducts.length} produits
-          </p> */}
         </div>
 
-        {/* FILTRES STICKY */}
-        <div className="sticky top-0 z-40 bg-[#fafafa]/80 backdrop-blur pb-4 mb-8">
-
-          <div className="flex flex-col md:flex-row gap-3">
-
-            {/* SEARCH */}
+        {/* BARRE DE FILTRES STICKY */}
+        <div className="sticky top-0 z-40 bg-[#fafafa]/90 backdrop-blur-md pb-4 mb-8 pt-4 border-b border-gray-100">
+          <div className="flex flex-col md:flex-row gap-4">
+            
+            {/* RECHERCHE */}
             <div className="relative flex-1">
-              <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <MagnifyingGlassIcon className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Rechercher..."
+                placeholder="Rechercher un produit, une marque..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 rounded-xl bg-white border border-gray-100 text-sm outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full pl-12 pr-4 py-3 rounded-2xl bg-white border border-gray-200 text-sm outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all shadow-sm"
               />
             </div>
 
-            {/* SELECTS */}
-            <div className="flex gap-2">
+            {/* SÉLECTEURS (Catégories & Tri) */}
+            <div className="flex gap-3">
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="px-4 py-3 rounded-xl bg-white border text-xs font-bold"
+                className="px-4 py-3 rounded-2xl bg-white border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm"
               >
-                <option value="">Catégories</option>
+                <option value="">Toutes les catégories</option>
                 {categories.map((cat) => (
-                  <option key={cat} value={cat}>
-                    {cat}
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
                   </option>
                 ))}
               </select>
@@ -180,64 +147,87 @@ const Shop = () => {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-4 py-3 rounded-xl bg-white border text-xs font-bold"
+                className="px-4 py-3 rounded-2xl bg-white border border-gray-200 text-sm font-semibold outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm"
               >
                 <option value="newest">Nouveautés</option>
-                <option value="price-low">Prix ↑</option>
-                <option value="price-high">Prix ↓</option>
+                <option value="price-low">Prix croissant</option>
+                <option value="price-high">Prix décroissant</option>
               </select>
             </div>
           </div>
         </div>
 
-        {/* GRID */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
-          {currentProducts.map((product) => (
-            <ProductCard
-              key={product._id}
-              product={product}
-              API_URL={API_URL}
-              navigate={navigate}
-            />
-          ))}
-        </div>
-
-        {/* PAGINATION DESKTOP */}
-        {window.innerWidth >= 768 && totalPages > 1 && (
-          <div className="flex justify-center gap-2 mt-12 flex-wrap">
-            {[...Array(totalPages)].map((_, i) => (
-              <button
-                key={i}
-                onClick={() => setPage(i + 1)}
-                className={`px-4 py-2 rounded-xl font-bold ${
-                  page === i + 1
-                    ? "bg-black text-white"
-                    : "bg-white border"
-                }`}
-              >
-                {i + 1}
-              </button>
+        {/* GESTION DU CHARGEMENT & ERREURS */}
+        {loading && products.length === 0 ? (
+          <div className="flex items-center justify-center min-h-[40vh]">
+            <div className="animate-spin h-12 w-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full" />
+          </div>
+        ) : error ? (
+          <div className="text-center py-20 text-red-500 font-bold bg-red-50 rounded-2xl">
+            {error}
+          </div>
+        ) : products.length === 0 ? (
+          <div className="text-center py-32 text-gray-400 bg-white rounded-3xl border border-gray-100 shadow-sm">
+            <MagnifyingGlassIcon className="mx-auto h-12 w-12 mb-4 text-gray-300" />
+            <p className="text-lg font-medium">Aucun produit ne correspond à votre recherche.</p>
+            <button onClick={() => {setSearch(''); setCategory('');}} className="mt-4 text-indigo-600 font-bold hover:underline">
+              Réinitialiser les filtres
+            </button>
+          </div>
+        ) : (
+          /* GRILLE DE PRODUITS */
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8 transition-opacity duration-300">
+            {products.map((product) => (
+              <ProductCard
+                key={product._id}
+                product={product}
+                API_URL={API_URL}
+                navigate={navigate}
+              />
             ))}
           </div>
         )}
 
-        {/* LOAD MORE MOBILE */}
-        {window.innerWidth < 768 &&
-          indexOfLast < filteredProducts.length && (
-            <div className="flex justify-center mt-10">
-              <button
-                onClick={() => setPage((p) => p + 1)}
-                className="px-6 py-3 bg-black text-white rounded-xl font-bold hover:scale-105 transition"
-              >
-                Voir plus
-              </button>
-            </div>
-          )}
+        {/* PAGINATION UNIVERSELLE (Design Premium) */}
+        {!loading && totalPages > 1 && (
+          <div className="flex justify-center items-center gap-2 mt-16 pb-10">
+            {/* Bouton Précédent */}
+            <button
+              onClick={() => setPage((p) => p - 1)}
+              disabled={page === 1}
+              className="p-3 rounded-xl border border-gray-200 text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronLeftIcon className="h-5 w-5" />
+            </button>
 
-        {/* EMPTY */}
-        {filteredProducts.length === 0 && (
-          <div className="text-center py-32 text-gray-400">
-            Aucun produit trouvé
+            {/* Chiffres de pagination */}
+            <div className="flex gap-2">
+              {[...Array(totalPages)].map((_, i) => {
+                const pageNum = i + 1;
+                return (
+                  <button
+                    key={pageNum}
+                    onClick={() => setPage(pageNum)}
+                    className={`w-12 h-12 flex items-center justify-center rounded-xl font-bold transition-all duration-300 ${
+                      page === pageNum
+                        ? "bg-[#1e293b] text-white shadow-lg scale-105"
+                        : "bg-white text-gray-500 border border-gray-200 hover:border-gray-400"
+                    }`}
+                  >
+                    {pageNum}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Bouton Suivant */}
+            <button
+              onClick={() => setPage((p) => p + 1)}
+              disabled={page === totalPages}
+              className="p-3 rounded-xl border border-gray-200 text-gray-500 bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+            >
+              <ChevronRightIcon className="h-5 w-5" />
+            </button>
           </div>
         )}
 

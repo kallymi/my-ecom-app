@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, toast  } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useCart } from "../context/CartContext";
 import { productService } from "../services/productService";
@@ -22,13 +22,22 @@ const ProductDetail = () => {
 
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [isBuying, setIsBuying] = useState(false);
 
   // --- NOUVELLE FONCTION : ACHAT DIRECT ---
-  const handleDirectBuy = (prod, qty) => {
-    // 1. On ajoute au panier
-    addToCart(prod, qty);
-    // 2. On redirige immédiatement vers la page de commande
-    navigate("/checkout"); 
+  const handleDirectBuy = async (prod, qty) => {
+    setIsBuying(true);
+
+    const itemToBuy = {
+      ...prod,
+      quantity,
+      price: prod.finalPrice || prod.price
+     };
+
+     navigate("/checkout", {
+      state: { directItem: itemToBuy }
+     });
+     setIsBuying(false);
   };
 
   const loadAllData = useCallback(async () => {

@@ -17,23 +17,30 @@ const getAdminProducts = asyncHandler(async (req, res) => {
 
   /* ===================== SEARCH ===================== */
   const keyword = req.query.keyword
-    ? {
-        name: { $regex: req.query.keyword, $options: "i" }
-      }
+    ? { name: { $regex: req.query.keyword, $options: "i" } }
     : {};
 
   /* ===================== STATUS FILTER ===================== */
   const status = req.query.status || "active";
-
   const statusFilter = {
     active: { isDeleted: false },
     deleted: { isDeleted: true },
     all: {}
   };
 
+  /* ===================== CATEGORY FILTER (AJOUT) ===================== */
+  // On crée un objet vide pour la catégorie
+  const categoryFilter = {};
+  // Si une catégorie est fournie et qu'elle n'est pas vide
+  if (req.query.category && req.query.category !== "") {
+    categoryFilter.category = req.query.category;
+  }
+
+  /* ===================== COMBINE FILTERS ===================== */
   const filter = {
     ...keyword,
-    ...(statusFilter[status] || statusFilter.active)
+    ...(statusFilter[status] || statusFilter.active),
+    ...categoryFilter // <--- On injecte le filtre de catégorie ici
   };
 
   /* ===================== QUERY ===================== */
@@ -56,8 +63,6 @@ const getAdminProducts = asyncHandler(async (req, res) => {
     }
   });
 });
-
-
 
 
 // @desc    Obtenir un produit par ID (admin)

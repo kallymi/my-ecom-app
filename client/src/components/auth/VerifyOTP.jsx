@@ -33,21 +33,38 @@ const VerifyOtp = () => {
     setLoading(true);
 
     try {
-      // On utilise l'instance 'api' pour profiter de la config BaseURL
+      // 1. Appel API
       const res = await api.post("/auth/verify-otp", { email, otp });
       
-      const userData = res.data.user;
+      console.log("Réponse reçue :", res.data); // Pour débugger la structure
 
-      // Mise à jour du contexte global
-      setUser(userData);
-      localStorage.setItem("user", JSON.stringify(userData));
+      // 2. Extraction sécurisée des données
+      // On vérifie si les données sont dans res.data.user ou res.data.data.user
+      const userData = res.data.user || res.data.data?.user;
+      const token = res.data.token || res.data.data?.token;
 
-      setSuccess("Compte vérifié avec succès !");
-      
-      // Redirection vers l'accueil
-      setTimeout(() => navigate("/"), 1500);
+      if (res.data.success || res.status === 200) {
+        setSuccess("Compte activé avec succès !");
+
+        // 3. Mise à jour du contexte et du stockage si les données existent
+        if (userData) {
+          setUser(userData);
+          localStorage.setItem("user", JSON.stringify(userData));
+        }
+        
+        if (token) {
+          localStorage.setItem("token", token);
+        }
+
+        // 4. Redirection après un court délai pour laisser l'utilisateur voir le succès
+        setTimeout(() => {
+          navigate("/"); // Vers l'accueil ou le dashboard
+        }, 2000);
+      }
     } catch (err) {
-      setError(err.response?.data?.message || "Code OTP invalide ou expiré");
+      console.error("Erreur Catch:", err.response?.data);
+      // On affiche le message précis du backend s'il existe
+      setError(err.response?.data?.message || "Code OTP incorrect ou expiré");
     } finally {
       setLoading(false);
     }
@@ -134,6 +151,7 @@ const VerifyOtp = () => {
               <input
                 type="text"
                 inputMode="numeric" // Force le pavé numérique sur mobile
+                autoComplete="one-time-code"
                 pattern="[0-9]*"
                 maxLength="6"
                 value={otp}

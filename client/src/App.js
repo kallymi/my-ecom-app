@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 
 // ===============================
 // CONTEXTES
@@ -35,6 +36,7 @@ import OrderSuccess from './pages/OrderSuccess';
 import TrackOrder from './pages/TrackOrder';
 import OrderConfirmation from './pages/OrderConfirmation';
 
+
 // ===============================
 // PAGES PROTÉGÉES (Connecté)
 // ===============================
@@ -64,72 +66,75 @@ const theme = createTheme({
   },
 });
 
+const GOOGLE_CLIENT_ID = "784347486312-9g7rbg9jv6evsh847tmgck5qaj57t0vf.apps.googleusercontent.com";
+
 function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Toaster position="top-right" reverseOrder={false} />
-      
-      <Router>
-        <AuthProvider>
-          <CartProvider>
-            
-            <div className="flex flex-col min-h-screen bg-[#F8FAFC]">
-              <ScrollToTop />
-              <Header />
-              
-              <main className="flex-grow">
-                <Routes>
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+      <AuthProvider>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <Toaster position="top-right" reverseOrder={false} />
+          
+          <Router>
+            <CartProvider> 
+                <div className="flex flex-col min-h-screen bg-[#F8FAFC]">
+                  <ScrollToTop />
+                  <Header />
                   
-                  {/* =============================== */}
-                  {/* 🟢 ROUTES PUBLIQUES (Toujours accessibles) */}
-                  {/* =============================== */}
-                  <Route path="/" element={<Home />} />
-                  <Route path="/shop" element={<Shop />} />
-                  <Route path="/product/:id" element={<ProductDetail />} />
-                  <Route path="/cart" element={<Cart />} />
-                  <Route path="/order-success/:orderNumber" element={<OrderSuccess />} />
-                  <Route path="/track-order" element={<TrackOrder />} />
-                  <Route path="/track/:orderNumber" element={<TrackOrder />} />
-                  <Route path="/order-confirmation" element={<OrderConfirmation />} />
+                  <main className="flex-grow">
+                    <Routes>
+                      
+                      {/* =============================== */}
+                      {/* 🟢 ROUTES PUBLIQUES (Toujours accessibles) */}
+                      {/* =============================== */}
+                      <Route path="/" element={<Home />} />
+                      <Route path="/shop" element={<Shop />} />
+                      <Route path="/product/:id" element={<ProductDetail />} />
+                      <Route path="/cart" element={<Cart />} />
+                      <Route path="/checkout" element={<Checkout />} />
+                      <Route path="/order-success/:orderNumber" element={<OrderSuccess />} />
+                      <Route path="/track-order" element={<TrackOrder />} />
+                      <Route path="/track/:orderNumber" element={<TrackOrder />} />
+                      <Route path="/order-confirmation" element={<OrderConfirmation />} />
 
-                  {/* =============================== */}
-                  {/* 🔐 ROUTES D'AUTHENTIFICATION (Uniquement si DECONNECTÉ) */}
-                  {/* =============================== */}
-                  <Route element={<PublicRoute />}>
-                    <Route path="/login" element={<Login />} />
-                    <Route path="/register" element={<Register />} />
-                    <Route path="/forgot-password" element={<ForgotPassword />} />
-                    <Route path="/verify-otp" element={<VerifyOTP />} />
-                    <Route path="/reset-password" element={<ResetPassword />} />
-                  </Route>
+                      {/* =============================== */}
+                      {/* 🔐 ROUTES D'AUTHENTIFICATION (Uniquement si DECONNECTÉ) */}
+                      {/* =============================== */}
+                      <Route element={<PublicRoute />}>
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+                        <Route path="/forgot-password" element={<ForgotPassword />} />
+                        <Route path="/verify-otp" element={<VerifyOTP />} />
+                        <Route path="/reset-password" element={<ResetPassword />} />
+                      </Route>
 
-                  {/* =============================== */}
-                  {/* 🔒 ROUTES PROTÉGÉES (Uniquement si CONNECTÉ) */}
-                  {/* =============================== */}
-                  <Route element={<ProtectedRoute />}>
-                    {/* Commandes */}
-                    <Route path="/checkout" element={<Checkout />} />
-                    <Route path="/orders" element={<OrderHistory />} />
-                    <Route path="/my-orders" element={<UserOrders />} />
-                    <Route path="/order-detail/:id" element={<OrderDetail />} />
+                      {/* =============================== */}
+                      {/* 🔒 ROUTES PROTÉGÉES (Uniquement si CONNECTÉ) */}
+                      {/* =============================== */}
+                      <Route element={<ProtectedRoute />}>
+                        {/* Commandes */}
+                        <Route path="/orders" element={<OrderHistory />} />
+                        <Route path="/my-orders" element={<UserOrders />} />
+                        <Route path="/order-detail/:id" element={<OrderDetail />} />
 
-                    {/* Profil utilisateur */}
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/profile/settings" element={<ProfileSettings />} />
-                    <Route path="/profile/change-password" element={<ChangePassword />} />
-                  </Route>
+                        {/* Profil utilisateur */}
+                        <Route path="/profile" element={<Profile />} />
+                        <Route path="/profile/settings" element={<ProfileSettings />} />
+                        <Route path="/profile/change-password" element={<ChangePassword />} />
+                      </Route>
 
-                </Routes>
-              </main>
+                    </Routes>
+                  </main>
 
-              <Footer />
-            </div>
+                  <Footer />
+                </div>
 
-          </CartProvider>
-        </AuthProvider>
-      </Router>
-    </ThemeProvider>
+              </CartProvider>
+          </Router>
+        </ThemeProvider>
+      </AuthProvider>
+    </GoogleOAuthProvider>
   );
 }
 

@@ -1,6 +1,6 @@
 import axios from "axios";
 
-export const API_URL = "http://172.16.36.89:5000/api";
+export const API_URL = "http://192.168.100.6:5000/api";
 
 const api = axios.create({
   baseURL: API_URL,
@@ -8,17 +8,25 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// api.interceptors.request.use((config) => {
-//   const token = localStorage.getItem("adminToken");
-//   if (token) {
-//     config.headers.Authorization = `Bearer ${token}`;
-//   }
-//   return config;
-// });
+// INTERCEPTEUR DE REQUÊTE : On ajoute le token manuellement
+api.interceptors.request.use((config) => {
+  // On récupère le token stocké (on va l'appeler 'adminToken')
+  const token = localStorage.getItem("adminToken");
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+}, (error) => Promise.reject(error));
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => Promise.reject(error)
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.warn("Session expirée ou non autorisée");
+      // Optionnel: localStorage.removeItem("adminToken"); 
+    }
+    return Promise.reject(error);
+  }
 );
 
 export default api;

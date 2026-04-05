@@ -10,6 +10,16 @@ import "react-quill-new/dist/quill.snow.css";
 import api from "../../api/axios";
 import toast from "react-hot-toast";
 
+
+const modules = {
+  toolbar: [
+    [{ 'header': [1, 2, false] }],
+    ['bold', 'italic', 'underline', 'strike'],
+    [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+    ['clean']
+  ],
+};
+
 export default function EditProduct() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -120,17 +130,17 @@ export default function EditProduct() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-8 lg:p-12">
+    <div className="min-h-screen bg-[#F8FAFC] p-4 md:p-6 lg:p-10">
       <div className="max-w-7xl mx-auto">
         
         {/* --- HEADER FIXE --- */}
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
-          <div className="space-y-2">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div className="space-y-1">
             <button
               onClick={() => navigate("/admin/products")}
-              className="flex items-center text-gray-400 hover:text-indigo-600 mb-10 font-black uppercase text-[10px] tracking-widest"
+              className="flex items-center text-gray-400 hover:text-indigo-600 mb-4 font-black uppercase text-[10px] tracking-widest"
             >
-              <ArrowLeft size={16} className="mr-2" />
+              <ArrowLeft size={14} className="mr-2" />
               Retour inventaire
             </button>
             <h1 className="text-3xl md:text-5xl font-[1000] tracking-tighter text-slate-900 uppercase italic leading-none">
@@ -142,7 +152,7 @@ export default function EditProduct() {
           <button 
             form="edit-form" 
             disabled={loading}
-            className="group relative px-8 py-4 bg-slate-900 overflow-hidden text-white rounded-2xl font-black uppercase text-[11px] tracking-widest transition-all hover:bg-indigo-600 hover:shadow-2xl hover:shadow-indigo-200 disabled:opacity-70"
+            className="w-full sm:w-auto flex justify-center items-center gap-3 px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[11px] tracking-widest transition-all hover:bg-indigo-600"
           >
             <div className="relative z-10 flex items-center gap-3">
               {loading ? <Loader2 className="animate-spin" size={18} /> : <Save size={18} />}
@@ -180,7 +190,7 @@ export default function EditProduct() {
             {/* Galerie Multi-images */}
             <div className="bg-white p-6 rounded-[2.5rem] shadow-sm border border-slate-100">
               <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Galerie Additionnelle</h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-3 gap-3">
                 {/* Images Existantes */}
                 {existingImages.filter(img => !img.isMain).map((img, idx) => (
                   <div key={`old-${idx}`} className="relative aspect-square rounded-2xl overflow-hidden group border border-slate-100 bg-slate-50">
@@ -230,7 +240,7 @@ export default function EditProduct() {
 
           {/* --- COLONNE DROITE (Contenu & Prix) --- */}
           <div className="lg:col-span-8 space-y-6">
-            <div className="bg-white p-8 md:p-10 rounded-[3rem] shadow-sm border border-slate-100 space-y-8">
+            <div className="bg-white p-5 md:p-10 rounded-[1.5rem] md:rounded-[3rem] shadow-sm border border-slate-100 space-y-6 md:space-y-8">
               
               {/* Nom du produit */}
               <div className="space-y-3">
@@ -285,7 +295,8 @@ export default function EditProduct() {
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Description détaillée</label>
                 <div className="rounded-[2rem] overflow-hidden border border-slate-100 bg-slate-50">
                   <ReactQuill 
-                    theme="snow" 
+                    theme="snow"
+                    modules={modules}
                     value={form.description} 
                     onChange={(val) => setForm({...form, description: val})}
                     className="bg-white"
@@ -312,10 +323,10 @@ export default function EditProduct() {
                 </div>
 
                 {form.promotion.isActive && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 animate-in fade-in slide-in-from-top-2">
-                    <div className="space-y-2 lg:col-span-1">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-6 animate-in fade-in slide-in-from-top-2">
+                    <div className="space-y-2">
                       <label className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Valeur</label>
-                      <input type="number" className="w-full p-4 rounded-xl border-none shadow-inner font-black bg-white" value={form.promotion.value} onChange={e => setForm({...form, promotion: {...form.promotion, value: e.target.value}})} />
+                      <input type="number" className="w-full p-4 rounded-xl border-none shadow-inner font-black bg-white focus:ring-2 focus:ring-indigo-500" value={form.promotion.value} onChange={e => setForm({...form, promotion: {...form.promotion, value: e.target.value}})} />
                     </div>
                     <div className="space-y-2 lg:col-span-1">
                       <label className="text-[9px] font-black text-indigo-600 uppercase tracking-widest">Type</label>

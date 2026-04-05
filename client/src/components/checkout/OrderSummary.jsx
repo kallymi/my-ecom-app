@@ -1,13 +1,14 @@
 import React from 'react';
 import { ShieldCheck, ShoppingBag, Tag } from 'lucide-react';
-import { getMainImage } from "../../utils/getMainImage";
+// Importe ta fonction de résolution
+import { resolveImageUrl } from "../../utils/resolveImageUrl"; 
 
 export const OrderSummary = ({ cart, cartTotal, totalSavings }) => {
   return (
     <aside className="lg:col-span-5 lg:sticky lg:top-24 w-full">
       <div className="bg-black text-white rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-10 shadow-2xl relative overflow-hidden border border-white/5">
         
-        {/* Glow Effect Indigo */}
+        {/* Glow Effect */}
         <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-600/15 blur-[60px] pointer-events-none" />
         
         {/* Header */}
@@ -21,18 +22,25 @@ export const OrderSummary = ({ cart, cartTotal, totalSavings }) => {
         {/* Cart Items List */}
         <div className="space-y-6 mb-8 max-h-[300px] md:max-h-[450px] overflow-y-auto pr-2 custom-scrollbar relative z-10">
           {cart.map((item, i) => {
-            const p = item.product;
-            // On récupère les prix avec des fallbacks pour éviter le "0"
+            // --- LOGIQUE DE DÉTECTION ---
+            // Si c'est le panier, le produit est dans item.product
+            // Si c'est un achat direct, l'item est le produit lui-même
+            const p = item.product || item; 
+            
+            // On récupère l'image : soit la première du tableau, soit le champ image simple
+            const imagePath = p?.images?.[0]?.url || p?.images?.[0] || p?.image;
+
             const originalPrice = p?.price || 0;
             const finalPrice = p?.finalPrice || originalPrice; 
             const hasPromo = p?.isPromoValid || (finalPrice < originalPrice);
 
             return (
               <div key={i} className="flex gap-4 items-center group animate-in fade-in slide-in-from-right-4 duration-300">
-                {/* Image du produit */}
+                
+                {/* Image du produit corrigée */}
                 <div className="w-14 h-18 md:w-16 md:h-20 bg-white/5 rounded-xl md:rounded-2xl overflow-hidden shrink-0 border border-white/10 relative">
                    <img 
-                     src={getMainImage(p)} 
+                     src={resolveImageUrl(imagePath)} 
                      className="w-full h-full object-cover grayscale group-hover:grayscale-0 transition-all duration-500" 
                      alt={p?.name} 
                    />
@@ -51,14 +59,14 @@ export const OrderSummary = ({ cart, cartTotal, totalSavings }) => {
                   
                   <div className="flex flex-col gap-0.5">
                     <div className="flex items-center gap-2">
-                      
-                      {/* Quantité badge */}
                       <span className="text-[9px] font-black text-indigo-500 bg-indigo-500/10 px-1.5 rounded">
                         x{item.quantity}
                       </span>
+                      <span className="text-[11px] font-black">
+                        {(finalPrice * item.quantity).toLocaleString()} FCFA
+                      </span>
                     </div>
 
-                    {/* Affichage du prix original barré si promo */}
                     {hasPromo && (
                       <span className="text-[9px] font-bold text-white/20 line-through tracking-wider uppercase">
                         {(originalPrice * item.quantity).toLocaleString()} FCFA

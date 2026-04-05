@@ -14,86 +14,90 @@ const generateOrderNumber = () =>
     CREATE ORDER (USER / GUEST)
 ===================================================== */
 const createOrder = asyncHandler(async (req, res) => {
+    console.log("📥 REQUÊTE REÇUE DANS CREATE_ORDER");
     const { shippingAddress, paymentMethod, items: frontendItems } = req.body;
-    const isGuest = !req.user;
+    console.log("📦 Items reçus:", frontendItems?.length);
+    // 1. Vérification de base
+    if (!frontendItems || frontendItems.length === 0) {
+        res.status(400);
+        throw new Error('Le panier envoyé est vide');
+    }
 
+    const isGuest = !req.user;
     let orderItems = [];
     let totalAmount = 0;
 
-    // Fonction utilitaire pour traiter chaque item et garantir le calcul du prix
-    const processItems = async (itemsList) => {
-        const processed = [];
-        let runningTotal = 0;
+    // 2. Traitement des items (Calcul du prix réel côté serveur pour éviter la fraude)
+    for (const item of frontendItems) {
+        const productId = item.product?._id || item.product;
+        console.log("🔍 Recherche produit ID:", productId);
+        const product = await Product.findById(productId);
 
-        for (const item of itemsList) {
-            // On fetch le produit en base pour être sûr d'avoir le prix à jour
-            const product = await Product.findById(item.product._id || item.product);
-            if (!product || !product.isActive) throw new Error(`Produit indisponible`);
-            
-            // Calcul du prix via ta logique métier (Snapshot)
-            const pricing = product.getPricingSnapshot();
-            
-            processed.push({
-                product: product._id,
-                quantity: item.quantity,
-                unitPrice: pricing.unitPrice,
-                originalPrice: pricing.originalPrice,
-                discountPerUnit: pricing.discountAmount,
-                name: product.name,
-                image: product.images.find(img => img.isMain)?.url || product.images[0]?.url,
-                returnDeadline: new Date(Date.now() + (product.returnDelay || 7) * 24 * 60 * 60 * 1000)
-            });
-            runningTotal += pricing.unitPrice * item.quantity;
+        if (!product || !product.isActive) {
+            res.status(404);
+            throw new Error(`Le produit ${product?.name || 'ID: ' + productId} n'est plus disponible.`);
         }
-        return { processed, runningTotal };
-    };
 
-    // 1. DÉTERMINATION DES ITEMS
-    if (!isGuest) {
-        const cart = await Cart.findOne({ user: req.user._id });
-        const itemsToProcess = (cart && cart.items.length > 0) ? cart.items : frontendItems;
-
-        if (!itemsToProcess || itemsToProcess.length === 0) {
+        // Vérification du stock avant de continuer
+        if (product.stock < item.quantity) {
             res.status(400);
-            throw new Error('Votre panier est vide');
+            throw new Error(`Stock insuffisant pour ${product.name} (Disponible: ${product.stock})`);
         }
 
-        const { processed, runningTotal } = await processItems(itemsToProcess);
-        orderItems = processed;
-        totalAmount = runningTotal;
-    } else {
-        if (!frontendItems || frontendItems.length === 0) {
-            res.status(400);
-            throw new Error('Panier invité vide');
-        }
-        const { processed, runningTotal } = await processItems(frontendItems);
-        orderItems = processed;
-        totalAmount = runningTotal;
+        const pricing = product.getPricingSnapshot();
+        
+        orderItems.push({
+            product: product._id,
+            quantity: item.quantity,
+            unitPrice: pricing.unitPrice,
+            originalPrice: pricing.originalPrice,
+            discountPerUnit: pricing.discountAmount,
+            name: product.name,
+            image: product.images?.find(img => img.isMain)?.url || product.images?.[0]?.url || "",
+            returnDeadline: new Date(Date.now() + (product.returnDelay || 7) * 24 * 60 * 60 * 1000)
+        });
+
+        totalAmount += pricing.unitPrice * item.quantity;
     }
 
-    // 2. CRÉATION DE LA COMMANDE
+    console.log("💰 Total calculé:", totalAmount);
+    // 3. CRÉATION DE LA COMMANDE 
     const order = await Order.create({
         user: isGuest ? null : req.user._id,
         isGuest,
-        orderNumber: generateOrderNumber(),
+        orderNumber: generateOrderNumber(), // Assure-toi que cette fonction marche !
         items: orderItems,
-        shippingAddress,
+        shippingAddress: {
+            fullName: shippingAddress.fullName,
+            phone: shippingAddress.phone,
+            neighborhood: shippingAddress.neighborhood,
+            addressDetails: shippingAddress.addressDetails || ""
+        },
         paymentMethod: paymentMethod || 'COD',
         totalAmount,
         status: 'PENDING'
     });
 
-    // 3. MISE À JOUR STOCK
+    // 4. MISE À JOUR STOCK (On le fait après pour être sûr que la commande est créée)
     await Promise.all(orderItems.map(item => 
         Product.findByIdAndUpdate(item.product, { $inc: { stock: -item.quantity } })
     ));
 
-    // 4. NETTOYAGE PANIER
+    // 5. NETTOYAGE PANIER BDD (Si l'utilisateur est connecté)
     if (!isGuest) {
-        await Cart.findOneAndUpdate({ user: req.user._id }, { $set: { items: [], totalAmount: 0, totalItems: 0 } });
+        await Cart.findOneAndUpdate(
+            { user: req.user._id }, 
+            { $set: { items: [], totalAmount: 0, totalItems: 0 } }
+        );
     }
 
-    res.status(201).json({ success: true, order });
+    console.log("✅ [5] Commande créée ID:", order._id);
+    // 6. RÉPONSE FINALE (Crucial pour que le frontend s'arrête de tourner)
+    res.status(201).json({ 
+        success: true, 
+        message: "Commande créée avec succès",
+        order 
+    });
 });
 
 /* =====================================================
@@ -159,6 +163,7 @@ const getAllOrders = asyncHandler(async (req, res) => {
     UPDATE STATUS (Version augmentée avec Gestion Refus)
 ===================================================== */
 const updateOrderStatus = asyncHandler(async (req, res) => {
+    
     const { status } = req.body; // status peut être 'RETURNED', 'RETURN_REJECTED', etc.
     const order = await Order.findById(req.params.id);
 

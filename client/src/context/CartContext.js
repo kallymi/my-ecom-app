@@ -147,47 +147,63 @@ export const CartProvider = ({ children }) => {
   }, 0);
   
   // ===============================
-  // Checkout complet
+  // Checkout complet (Version Corrigée)
   // ===============================
-  const checkout = async (shippingInfo, paymentMethod = "COD") => {
-    if (cart.length === 0) throw new Error("Le panier est vide");
+  const checkout = async (checkoutData) => {
+    // MODIFICATION ICI : On vérifie si c'est un achat direct OU si le panier a des items
+    const isDirectOrder = checkoutData?.isDirectOrder;
+    
+    if (cart.length === 0 && !isDirectOrder) {
+      toast.error("Le panier est vide");
+      return { success: false };
+    }
 
     setLoading(true);
     try {
-      const orderItems = cart.map(item => ({
-        product: item.product._id,
-        quantity: item.quantity,
-        unitPrice: item.unitPrice || item.product?.finalPrice,
-        originalPrice: item.originalPrice || item.product?.price,
-        discountPerUnit: item.discountAmount || 0,
-        name: item.product.name,
-        image: item.product.images?.[0]?.url || ""
-      }));
+      // 1. Préparation des items
+      let orderItems;
+      
+      if (isDirectOrder) {
+        // Si achat direct, on utilise les items envoyés par le composant
+        orderItems = checkoutData.items;
+      } else {
+        // Sinon, on prend le panier classique
+        orderItems = cart.map(item => ({
+          product: item.product._id || item.product,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice || item.product?.finalPrice || item.product?.price,
+          originalPrice: item.product?.price || item.unitPrice,
+          name: item.product?.name,
+          image: item.product?.images?.[0]?.url || ""
+        }));
+      }
 
-      const isGuest = !user;
-
-      const orderData = {
+      // 2. Payload final
+      const finalPayload = {
+        ...checkoutData,
         items: orderItems,
-        shippingAddress: {
-          fullName: shippingInfo.fullName,
-          phone: shippingInfo.phone,
-          neighborhood: shippingInfo.neighborhood,
-          city: shippingInfo.city || "Non spécifiée",
-          address: shippingInfo.address || ""
-        },
-        paymentMethod,
-        totalAmount: cartTotal,
-        isGuest,
+        isGuest: !user
       };
 
-      const result = await orderService.createOrder(orderData);
-      const finalOrder = result.order ? result.order : result;
+      // 3. Appel au service
+      const response = await orderService.createOrder(finalPayload);
+      const result = response.data || response;
 
-      await clearCart();
-      return { success: true, order: finalOrder };
+      // 4. Nettoyage UNIQUEMENT si ce n'était pas un achat direct
+      // (On ne vide pas le panier de l'utilisateur s'il a juste fait un achat rapide à côté)
+      if (!isDirectOrder) {
+        setCart([]);
+        localStorage.removeItem("cart");
+        if (isAuthenticated && token) {
+          try { await cartService.clearCart(); } catch (e) {}
+        }
+      }
+
+      return result; 
       
     } catch (err) {
-      const msg = err.response?.data?.message || err.message;
+      const msg = err.response?.data?.message || "Erreur lors de la commande";
+      toast.error(msg);
       return { success: false, message: msg };
     } finally {
       setLoading(false);

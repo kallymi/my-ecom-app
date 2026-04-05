@@ -3,67 +3,115 @@ const Order = require("../../models/orderModel");
 
 const getRevenueStats = asyncHandler(async (req, res) => {
   const now = new Date();
+  
+  // 1. Période du graphique
+  const daysToBack = req.query.period === 'month' ? 30 : 7;
+  const startDate = new Date();
+  startDate.setDate(now.getDate() - daysToBack);
 
-  const stats = await Order.aggregate([
-    // On ne compte que ce qui est livré (l'argent est encaissé)
-    { $match: { status: "DELIVERED" } },
-
-    {
-      $addFields: {
-        // Sécurité : on récupère la deadline, si elle n'existe pas, on met une date très ancienne
-        finalReturnDeadline: { 
-          $ifNull: [{ $max: "$items.returnDeadline" }, new Date(0)] 
+  const [globalStats, chartDataRaw, globalCount] = await Promise.all([
+    // --- REQUÊTE 1 : TOTAUX GLOBAUX (Cartes KPI) ---
+    Order.aggregate([
+      { $match: { status: "DELIVERED" } },
+      {
+        $group: {
+          _id: null,
+          validatedRevenue: {
+            $sum: {
+              $cond: [
+                { 
+                  $or: [
+                    { $eq: ["$isRevenueCounted", true] },
+                    { $lt: ["$finalReturnDeadline", now] } // Utilise le champ direct de ta DB
+                  ]
+                },
+                "$totalAmount",
+                0
+              ]
+            }
+          },
+          pendingRevenue: {
+            $sum: {
+              $cond: [
+                { 
+                  $and: [
+                    { $eq: ["$isRevenueCounted", false] },
+                    { $gt: ["$finalReturnDeadline", now] }
+                  ]
+                },
+                "$totalAmount",
+                0
+              ]
+            }
+          },
+          totalOrders: { $sum: 1 }
         }
       }
-    },
+    ]),
 
-    {
-      $group: {
-        _id: null,
-        // CA VALIDÉ : Déjà compté OU (Deadline passée)
-        validatedRevenue: {
-          $sum: {
-            $cond: [
-              { 
-                $or: [
-                  { $eq: ["$isRevenueCounted", true] },
-                  { $lt: ["$finalReturnDeadline", now] }
-                ]
-              },
-              "$totalAmount",
-              0
-            ]
+    // --- REQUÊTE 2 : DONNÉES DU GRAPHIQUE ---
+    Order.aggregate([
+      { 
+        $match: { 
+          status: "DELIVERED",
+          createdAt: { $gte: startDate } 
+        } 
+      },
+      {
+        $group: {
+          // On groupe par jour de création
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          caValide: {
+            $sum: {
+              $cond: [
+                { 
+                  $or: [
+                    { $eq: ["$isRevenueCounted", true] },
+                    { $lt: ["$finalReturnDeadline", now] }
+                  ]
+                },
+                "$totalAmount",
+                0
+              ]
+            }
+          },
+          enAttente: {
+            $sum: {
+              $cond: [
+                { 
+                  $and: [
+                    { $eq: ["$isRevenueCounted", false] },
+                    { $gt: ["$finalReturnDeadline", now] }
+                  ]
+                },
+                "$totalAmount",
+                0
+              ]
+            }
           }
-        },
-        // CA EN ATTENTE : Pas encore compté ET Deadline futur
-        pendingRevenue: {
-          $sum: {
-            $cond: [
-              { 
-                $and: [
-                  { $eq: ["$isRevenueCounted", false] },
-                  { $gt: ["$finalReturnDeadline", now] },
-                  { $ne: ["$finalReturnDeadline", new Date(0)] } // Exclure les anciennes commandes sans deadline
-                ]
-              },
-              "$totalAmount",
-              0
-            ]
-          }
-        },
-        totalOrders: { $sum: 1 }
-      }
-    }
+        }
+      },
+      { $sort: { "_id": 1 } }
+    ]),
+
+    Order.countDocuments()
   ]);
 
-  const result = stats[0] || { validatedRevenue: 0, pendingRevenue: 0, totalOrders: 0 };
+  const result = globalStats[0] || { validatedRevenue: 0, pendingRevenue: 0, totalOrders: 0 };
 
-  // On récupère aussi le nombre total de commandes (tous statuts confondus) pour le Dashboard
-  const globalCount = await Order.countDocuments();
+  // Formatage pour Recharts
+  const formattedChartData = chartDataRaw.map(item => {
+    const [year, month, day] = item._id.split('-');
+    return {
+      name: `${day}/${month}`,
+      caValide: item.caValide,
+      enAttente: item.enAttente
+    };
+  });
 
   res.json({
     success: true,
-    ordersCount: globalCount, // Correction ici pour ton Dashboard
+    ordersCount: globalCount,
     revenue: {
       validated: result.validatedRevenue,
       pending: result.pendingRevenue,
@@ -71,10 +119,9 @@ const getRevenueStats = asyncHandler(async (req, res) => {
       averageBasket: result.totalOrders > 0 
         ? Math.round(result.validatedRevenue / result.totalOrders) 
         : 0
-    }
+    },
+    chartData: formattedChartData 
   });
 });
 
-module.exports = { 
-  getRevenueStats, 
-};
+module.exports = { getRevenueStats };

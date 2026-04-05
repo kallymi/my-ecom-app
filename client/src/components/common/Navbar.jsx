@@ -52,7 +52,7 @@ export default function Navbar() {
           <div className="hidden md:flex items-center gap-8 mr-4">
             <NavLink to="/">Accueil</NavLink>
             <NavLink to="/shop">Boutique</NavLink>
-            <NavLink to="/track" icon={<Truck size={14} />}>Suivre</NavLink>
+            <NavLink to="/track-order" icon={<Truck size={14} />}>Suivre</NavLink>
           </div>
 
           {/* PANIER */}
@@ -116,10 +116,11 @@ export default function Navbar() {
           </div>
 
           <div className="p-8 flex flex-col gap-6">
-            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-gray-300">Navigation</p>
+            <p className="text-[3px] font-black uppercase tracking-[0.3em] text-gray-300">Navigation</p>
             <MobileLink to="/" label="Accueil" />
             <MobileLink to="/shop" label="Boutique" />
-            <MobileLink to="/my-orders" label="Mes Commandes" icon={<Package size={18} className="text-indigo-600" />} />
+            <MobileLink to="/track-order" label="Suivre ma commande" />
+            
           </div>
 
           <div className="mt-auto p-8 border-t border-gray-50 bg-gray-50/50">
@@ -130,6 +131,7 @@ export default function Navbar() {
                   <div>
                     <p className="text-xs font-black uppercase tracking-tight truncate w-32">{user.name}</p>
                     <Link to="/profile" className="text-[10px] text-indigo-600 font-bold uppercase tracking-widest">Voir Profil</Link>
+                    <MobileLink to="/my-orders" label="Mes Commandes" icon={<Package size={18} className="text-indigo-600" />} />
                   </div>
                 </div>
                 <button onClick={handleLogoutClick} className="w-full py-4 bg-white border border-rose-100 text-rose-500 rounded-2xl text-[10px] font-black uppercase tracking-widest">Déconnexion</button>

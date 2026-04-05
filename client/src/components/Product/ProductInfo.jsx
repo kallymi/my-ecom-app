@@ -5,14 +5,15 @@ import {
   BoltIcon,
   ChatBubbleLeftRightIcon,
   ShoppingBagIcon,
+  ClockIcon, // Ajout de l'icône horloge
 } from "@heroicons/react/24/outline";
 
 const ProductInfo = ({
   product,
   quantity,
   setQuantity,
-  onAddToCart,   // Pour le panier classique
-  onDirectBuy,    // Pour l'achat immédiat (checkout direct)
+  onAddToCart,
+  onDirectBuy,
   isPromoActive,
 }) => {
   const [timeLeft, setTimeLeft] = useState({ d: "00", h: "00", m: "00", s: "00" });
@@ -46,6 +47,14 @@ const ProductInfo = ({
     window.open(`https://wa.me/${phoneNumber}?text=${encodeURIComponent(message)}`, "_blank");
   };
 
+  // Petit composant interne pour les cases du chrono
+  const TimerUnit = ({ value, label }) => (
+    <div className="flex flex-col items-center px-2">
+      <span className="text-lg font-black text-rose-600 leading-none">{value}</span>
+      <span className="text-[7px] uppercase font-bold text-rose-400 tracking-tighter mt-1">{label}</span>
+    </div>
+  );
+
   return (
     <div className="flex flex-col gap-6 w-full max-w-full overflow-hidden">
       
@@ -59,42 +68,92 @@ const ProductInfo = ({
         </h1>
       </div>
 
-      {/* PRIX ET PROMO */}
-      <div className={`p-5 rounded-[2rem] border-2 ${isPromoActive ? "border-rose-500 bg-rose-50/30" : "border-slate-100 bg-slate-50/50"}`}>
-        <div className="flex flex-wrap items-baseline gap-3">
-          <span className={`text-3xl md:text-4xl font-black ${isPromoActive ? "text-rose-600" : "text-slate-900"}`}>
-            {(isPromoActive ? product.finalPrice : product.price)?.toLocaleString()} <span className="text-lg">F</span>
-          </span>
-          {isPromoActive && (
-            <span className="text-lg text-slate-400 line-through font-medium italic">
-              {product.price?.toLocaleString()} F
+      {/* BLOC PRIX ET CHRONO PROMO */}
+      <div className={`relative p-5 rounded-[2.5rem] border-2 transition-all duration-500 ${isPromoActive ? "border-rose-500 bg-rose-50/30" : "border-slate-100 bg-slate-50/50"}`}>
+        
+        {/* Badge OFF (en haut à droite) */}
+        {isPromoActive && (
+          <div className="absolute -top-3 -right-2 bg-rose-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full shadow-lg shadow-rose-200 rotate-3">
+             PROMO FLASH
+          </div>
+        )}
+
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          {/* Prix */}
+          <div className="flex flex-wrap items-baseline gap-3">
+            <span className={`text-3xl md:text-4xl font-black ${isPromoActive ? "text-rose-600" : "text-slate-900"}`}>
+              {(isPromoActive ? product.finalPrice : product.price)?.toLocaleString()} <span className="text-lg">F</span>
             </span>
+            {isPromoActive && (
+              <span className="text-lg text-slate-400 line-through font-medium italic">
+                {product.price?.toLocaleString()} F
+              </span>
+            )}
+          </div>
+
+          {/* Chronomètre (Affiché seulement si promo active) */}
+          {isPromoActive && (
+            <div className="flex items-center gap-1 bg-white/60 backdrop-blur-sm p-2 rounded-2xl border border-rose-100">
+              <ClockIcon className="h-4 w-4 text-rose-500 mr-1 animate-pulse" />
+              <TimerUnit value={timeLeft.d} label="Jours" />
+              <span className="font-black text-rose-300 mb-2">:</span>
+              <TimerUnit value={timeLeft.h} label="Heures" />
+              <span className="font-black text-rose-300 mb-2">:</span>
+              <TimerUnit value={timeLeft.m} label="Min" />
+              <span className="font-black text-rose-300 mb-2">:</span>
+              <TimerUnit value={timeLeft.s} label="Sec" />
+            </div>
           )}
         </div>
       </div>
 
       {/* ACTIONS COMPLÈTES */}
       <div className="space-y-3">
-        
-        {/* 1. SÉLECTEUR DE QUANTITÉ */}
+        {/* 1. SÉLECTEUR DE QUANTITÉ AVEC STOCK DYNAMIQUE */}
         {!outOfStock && (
           <div className="flex items-center justify-between p-1.5 bg-slate-100 rounded-full border border-slate-200/50">
             <div className="flex items-center gap-1">
-              <button onClick={() => setQuantity(q => Math.max(1, q - 1))} className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm active:scale-90 transition-all">
+              {/* Bouton Moins */}
+              <button 
+                onClick={() => setQuantity(q => Math.max(1, q - 1))} 
+                className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm active:scale-90 transition-all text-slate-600"
+              >
                 <MinusIcon className="h-4 w-4 stroke-[3]" />
               </button>
-              <span className="w-10 text-center font-black text-slate-800">{quantity}</span>
-              <button onClick={() => setQuantity(q => Math.min(product.stock, q + 1))} className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm active:scale-90 transition-all">
+
+              {/* Chiffre Quantité */}
+              <span className="w-10 text-center font-black text-slate-800 text-sm">{quantity}</span>
+
+              {/* Bouton Plus */}
+              <button 
+                onClick={() => setQuantity(q => Math.min(product.stock, q + 1))} 
+                className="w-10 h-10 flex items-center justify-center bg-white rounded-full shadow-sm active:scale-90 transition-all text-slate-600"
+              >
                 <PlusIcon className="h-4 w-4 stroke-[3]" />
               </button>
+
+              {/* INDICATEUR DE STOCK (NOUVEAU) */}
+              <div className="flex items-center gap-2 ml-3 pl-3 border-l border-slate-200">
+                <div className={`w-2 h-2 rounded-full animate-pulse ${
+                  product.stock < 5 ? "bg-orange-500" : "bg-emerald-500"
+                }`} />
+                <span className={`text-[10px] font-black uppercase tracking-tight ${
+                  product.stock < 5 ? "text-orange-600" : "text-emerald-600"
+                }`}>
+                  {product.stock < 5 ? `Seulement ${product.stock} restants !` : "En stock"}
+                </span>
+              </div>
             </div>
-            <span className="pr-4 text-[9px] font-black uppercase text-slate-400 tracking-widest">Quantité</span>
+
+            {/* Label Quantité à droite */}
+            <span className="pr-4 text-[9px] font-black uppercase text-slate-400 tracking-widest hidden sm:block">
+              Quantité
+            </span>
           </div>
         )}
 
-        {/* 2. BOUTONS D'ACHAT (Grille pour Panier + Achat Direct) */}
+        {/* BOUTONS D'ACHAT */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          {/* Ajouter au Panier - Style secondaire mais élégant */}
           <button
             disabled={outOfStock}
             onClick={() => onAddToCart && onAddToCart(product, quantity)}
@@ -104,7 +163,6 @@ const ProductInfo = ({
             Au Panier
           </button>
 
-          {/* Acheter Maintenant - Style primaire / Bolt */}
           <button
             disabled={outOfStock}
             onClick={() => onDirectBuy && onDirectBuy(product, quantity)}
@@ -115,7 +173,6 @@ const ProductInfo = ({
           </button>
         </div>
 
-        {/* 3. WHATSAPP - Large et amical */}
         {!outOfStock && (
           <button
             onClick={handleWhatsAppOrder}
@@ -127,11 +184,11 @@ const ProductInfo = ({
         )}
       </div>
 
-      {/* DESCRIPTION */}
+      {/* DESCRIPTION AVEC TYPOGRAPHY */}
       <div className="pt-6 border-t border-slate-100">
         <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em] mb-4">Détails</h3>
         <div
-          className="prose prose-slate max-w-full text-slate-600 leading-relaxed text-[0.9rem] break-words overflow-wrap-anywhere"
+          className="prose prose-slate max-w-full text-slate-600 leading-relaxed text-[0.9rem] break-words overflow-wrap-anywhere prose-p:my-2 prose-ul:list-disc prose-li:ml-4"
           dangerouslySetInnerHTML={{ __html: product.description }}
         />
       </div>

@@ -15,6 +15,7 @@ import api from "../../api/axios";
 import { useAuth } from "../../auth/AuthContext";
 import { useEffect } from "react";
 
+
 export default function AdminLogin() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -43,13 +44,10 @@ export default function AdminLogin() {
     setError(null);
 
     try {
+      const res = await api.post("/auth/login", { email, password });
 
-      const res = await api.post("/auth/login", {
-        email,
-        password
-      });
-
-      const user = res.data.user;
+      // 1. On extrait l'accessToken renvoyé par sendAuthResponse
+      const { user, accessToken } = res.data; 
 
       if (!user || user.role !== "admin") {
         setError("ACCÈS REFUSÉ : PRIVILÈGES INSUFFISANTS");
@@ -57,19 +55,18 @@ export default function AdminLogin() {
         return;
       }
 
-      login(user);
+      // 2. STOCKAGE CRUCIAL : On enregistre le token pour Axios
+      if (accessToken) {
+        localStorage.setItem("adminToken", accessToken);
+      }
 
+      // 3. Mise à jour du contexte et redirection
+      login(user);
       navigate("/admin", { replace: true });
 
     } catch (err) {
-
       console.error("LOGIN ERROR:", err);
-
-      setError(
-        err.response?.data?.message ||
-        "IDENTIFIANTS INCORRECTS"
-      );
-
+      setError(err.response?.data?.message || "IDENTIFIANTS INCORRECTS");
     } finally {
       setLoading(false);
     }
@@ -187,6 +184,8 @@ export default function AdminLogin() {
               <div className="absolute inset-0 bg-indigo-600 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
             </button>
           </form>
+
+          
 
           <div className="mt-12 pt-8 border-t border-black/5">
             <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em] leading-relaxed italic">

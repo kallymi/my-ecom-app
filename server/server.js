@@ -13,6 +13,9 @@ const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
 const path = require("path");
 const { Server } = require("socket.io");
+const session = require("express-session");
+
+
 
 // --------------------------
 // ROUTES
@@ -45,9 +48,9 @@ app.use(
         "http://localhost:3000",
         "http://localhost:5173",
         "http://localhost:5174",
-        "http://172.16.36.89:3000",
-        "http://172.16.36.89:5173",
-        "http://172.16.36.89:5174"
+        "http://192.168.100.6:3000",
+        "http://192.168.100.6:5173",
+        "http://192.168.100.6:5174"
       ];
 
       if (allowedOrigins.indexOf(origin) !== -1) {
@@ -59,7 +62,7 @@ app.use(
     },
     credentials: true, // Indispensable pour que le serveur accepte le cookie
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type"] // "Authorization" retiré pour forcer l'usage du cookie
+    allowedHeaders: ["Content-Type", "Authorization"] // "Authorization" retiré pour forcer l'usage du cookie
   })
 );
 
@@ -72,10 +75,6 @@ app.use(helmet({
 }));
 app.set("trust proxy", 1);
 
-// 4. Body Parsers (Lecture des requêtes)
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: false, limit: "10kb" }));
-
 // --------------------------
 // SERVEUR HTTP + SOCKET.IO
 // --------------------------
@@ -86,14 +85,18 @@ const io = new Server(server, {
       "http://localhost:3000",
       "http://localhost:5173",
       "http://localhost:5174",
-      "http://172.16.36.89:3000",
-      "http://172.16.36.89:5173",
-      "http://172.16.36.89:5174",
+      "http://192.168.100.6:3000",
+      "http://192.168.100.6:5173",
+      "http://192.168.100.6:5174",
     ],
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
   },
 });
+
+// 4. Body Parsers (Lecture des requêtes)
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: false, limit: "10kb" }));
 
 // --------------------------
 // LOGIQUE TEMPS RÉEL
@@ -154,8 +157,8 @@ const authLimiter = rateLimit({
 // --------------------------
 // app.use("/api/auth/login", authLimiter);
 // app.use("/api/auth/register", authLimiter);
-app.use("/api/auth", authLimiter);
-app.use("/api/auth", authRoutes);
+app.use("/api/auth", authLimiter, authRoutes);
+// app.use("/api/auth", authRoutes);
 
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);

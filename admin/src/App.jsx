@@ -4,7 +4,7 @@ import { AuthProvider } from "./auth/AuthContext";
 import AdminLayout from "./components/layout/AdminLayout";
 import Dashboard from "./pages/admin/Dashboard";
 import Products from "./pages/admin/Products";
-import ProductForm from "./pages/admin/ProductForm";
+import ProductForm from "./components/Product/Index";
 import EditProduct from "./pages/admin/EditProduct";
 import Categories from "./pages/admin/Categories";
 import CategoryForm from "./pages/admin/CategoryForm";

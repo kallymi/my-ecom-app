@@ -73,8 +73,8 @@ const TrackOrder = () => {
             <div className="w-1.5 h-1.5 bg-indigo-600 rounded-full animate-ping" />
             Live System Tracking
           </div>
-          <h1 className="text-4xl md:text-7xl font-[1000] tracking-tighter italic text-black mb-4 leading-none uppercase">
-            Suivi <span className="text-indigo-600 font-black">Colis.</span>
+          <h1 className="text-2xl md:text-3xl font-[1000] tracking-tighter italic text-black mb-4 leading-none uppercase">
+            Suivire mon <span className="text-indigo-600 font-black">Colis.</span>
           </h1>
           <p className="text-gray-400 font-bold uppercase text-[9px] md:text-[10px] tracking-widest max-w-[250px] mx-auto opacity-60">
             Protocole de localisation en temps réel
@@ -87,7 +87,7 @@ const TrackOrder = () => {
             <div className="flex-1 flex items-center bg-gray-50 rounded-[2rem] px-6 py-4 group focus-within:bg-white focus-within:ring-2 ring-indigo-100 transition-all">
               <Search size={18} className="text-gray-300 mr-3" />
               <input
-                placeholder="N° COMMANDE"
+                placeholder="CMD-****"
                 value={orderNumber}
                 onChange={(e) => setOrderNumber(e.target.value)}
                 className="bg-transparent w-full outline-none font-black uppercase text-[11px] tracking-widest"

@@ -1,59 +1,86 @@
-import React, { createContext, useState, useContext, useEffect, useCallback } from "react";
+// src/context/AuthContext.js
+import React, {
+  createContext,
+  useState,
+  useContext,
+  useEffect,
+  useCallback,
+  toast,
+} from "react";
+
 import api from "../api/axios";
 
+/* =========================
+   CONTEXT
+========================= */
 export const AuthContext = createContext();
 
+/* =========================
+   PROVIDER
+========================= */
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [initializing, setInitializing] = useState(true);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [initializing, setInitializing] = useState(true);
 
   const isAuthenticated = !!user;
 
-  // ===============================
-  // UTILITAIRE : Formatage Utilisateur
-  // ===============================
+  /* =========================
+     FORMAT USER
+  ========================= */
   const formatUser = useCallback((userData) => {
     if (!userData) return null;
-    
-    // On s'assure que l'e-mail est toujours traité en minuscules (Sécurité & Consistance)
-    const formatted = { ...userData };
-    if (formatted.email) {
-      formatted.email = formatted.email.toLowerCase().trim();
-    }
-    return formatted;
+
+    return {
+      ...userData,
+      email: userData.email?.toLowerCase().trim(),
+    };
   }, []);
 
-  // ===============================
-  // VERIFICATION AUTH AU DEMARRAGE
-  // ===============================
+  /* =========================
+     INIT AUTH (AU DEMARRAGE)
+  ========================= */
   useEffect(() => {
-    const checkAuthStatus = async () => {
+    let isMounted = true;
+
+    const initAuth = async () => {
       try {
-        // On force withCredentials pour être sûr que l'IP envoie le cookie
-        const res = await api.get("/auth/me"); 
+        // On vérifie s'il y a un token avant de lancer la requête inutilement
+        const hasToken = localStorage.getItem("accessToken");
+        if (!hasToken) {
+          setInitializing(false);
+          return;
+        }
+
+        const res = await api.get("/auth/me");
         
-        if (res.data?.user) {
-          setUser(formatUser(res.data.user));
-        } else {
-          // Si pas de user dans la data, on considère déconnecté
-          setUser(null);
-          localStorage.removeItem("user");
+        if (isMounted && res.data?.user) {
+          const formatted = formatUser(res.data.user);
+          setUser(formatted);
+          localStorage.setItem("user", JSON.stringify(formatted));
         }
       } catch (err) {
-        setUser(null);
-        localStorage.removeItem("user");
+        if (isMounted) {
+          console.error("Échec de l'initialisation auto:", err.message);
+          // On ne vide QUE si ce n'est pas une erreur de serveur (429, 500)
+          if (err.response?.status === 401 || err.response?.status === 403) {
+            setUser(null);
+            localStorage.clear(); // Plus radical mais sûr
+          }
+        }
+        logout();
       } finally {
-        setInitializing(false);
+        if (isMounted) setInitializing(false);
       }
     };
-    checkAuthStatus();
-  }, [formatUser]);
 
-  // ===============================
-  // LOGIN
-  // ===============================
+    initAuth();
+    return () => { isMounted = false; };
+  }, [formatUser]); // formatUser est stable grâce au useCallback
+  /* =========================
+     LOGIN
+  ========================= */
   const login = async (credentials) => {
     try {
       setLoading(true);
@@ -61,83 +88,171 @@ export const AuthProvider = ({ children }) => {
 
       const payload = {
         ...credentials,
-        email: credentials.email.toLowerCase().trim()
+        email: credentials.email.toLowerCase().trim(),
       };
 
       const res = await api.post("/auth/login", payload);
-      const userData = formatUser(res.data.user);
 
-      setUser(userData);
-      return res.data; 
+      const { user, accessToken } = res.data;
+
+      const formattedUser = formatUser(user);
+
+      // 🔥 stockage
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("user", JSON.stringify(formattedUser));
+
+      setUser(formattedUser);
+
+      return res.data;
+
     } catch (err) {
-      const message = err.response?.data?.message || "Identifiants incorrects";
+      const message =
+        err.response?.data?.message || "Erreur de connexion";
+
       setError(message);
-      throw new Error(message); 
+      throw new Error(message);
+
     } finally {
       setLoading(false);
     }
   };
 
-  // ===============================
-  // REGISTER
-  // ===============================
-  const register = async (userData) => {
+  /* =========================
+     REGISTER
+  ========================= */
+  const register = async (data) => {
     try {
       setLoading(true);
       setError(null);
 
       const payload = {
-        ...userData,
-        email: userData.email.toLowerCase().trim()
+        ...data,
+        email: data.email.toLowerCase().trim(),
       };
 
       const res = await api.post("/auth/register", payload);
-      return res.data; // On attend l'OTP, donc pas de setUser ici
-      
+      return res.data;
+
     } catch (err) {
-      const message = err.response?.data?.message || "Erreur lors de l'inscription";
+      const message =
+        err.response?.data?.message || "Erreur inscription";
+
+      setError(message);
+      throw new Error(message);
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* =========================
+     VERIFY OTP
+  ========================= */
+  const verifyOtp = async (data) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const res = await api.post("/auth/verify-otp", data);
+
+      const { user, accessToken } = res.data;
+
+      const formattedUser = formatUser(user);
+
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("user", JSON.stringify(formattedUser));
+
+      setUser(formattedUser);
+
+      return res.data;
+
+    } catch (err) {
+      const message =
+        err.response?.data?.message || "OTP invalide";
+
+      setError(message);
+      throw new Error(message);
+
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /* =========================
+     LOGING WITH GOOGLE
+  ========================= */
+  /* =========================
+      LOGIN WITH GOOGLE
+  ========================= */
+  const loginWithGoogle = async (googleAccessToken) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // On utilise ton instance "api" au lieu de "axios" direct
+      // On envoie le token reçu de Google au backend
+      const res = await api.post("/auth/google", {
+        token: googleAccessToken
+      });
+
+      const { user, accessToken } = res.data;
+      const formattedUser = formatUser(user);
+
+      // 🔥 On utilise "accessToken" pour rester cohérent avec ta fonction login()
+      localStorage.setItem("accessToken", accessToken);
+      localStorage.setItem("user", JSON.stringify(formattedUser));
+
+      setUser(formattedUser);
+      
+      // Pas besoin de navigate('/') ici si tu veux que le composant qui appelle 
+      // la fonction gère la redirection (ex: vers checkout)
+      return res.data;
+
+    } catch (err) {
+      const message = err.response?.data?.message || "Échec de la connexion Google";
       setError(message);
       throw new Error(message);
     } finally {
       setLoading(false);
     }
   };
-
-  // ===============================
-  // LOGOUT (Version Radicale & Propre)
-  // ===============================
+    /* =========================
+     LOGOUT
+  ========================= */
   const logout = async () => {
     try {
-      await api.get("/auth/logout");
+      await api.post("/auth/logout");
     } catch (err) {
-      console.error(err);
+      console.warn("Logout API failed");
     } finally {
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
+
       setUser(null);
+
       window.location.href = "/login";
     }
   };
 
-  // ===============================
-  // UPDATE / REFRESH USER
-  // ===============================
+  /* =========================
+     UPDATE USER
+  ========================= */
   const updateUser = useCallback((newData) => {
-    setUser((prevUser) => {
-      const updated = formatUser({ ...prevUser, ...newData });
-      // localStorage.setItem("user", JSON.stringify(updated));
+    setUser((prev) => {
+      const updated = formatUser({ ...prev, ...newData });
+
+      localStorage.setItem("user", JSON.stringify(updated));
       return updated;
     });
   }, [formatUser]);
 
-  // ===============================
-  // PROTECTION DU RENDU
-  // ===============================
+  /* =========================
+     LOADER GLOBAL
+  ========================= */
   if (initializing) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-slate-50">
-        <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-4 border-emerald-500 border-opacity-50"></div>
-          <p className="text-slate-500 font-medium animate-pulse">Sécurisation de la session...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin h-10 w-10 border-4 border-indigo-500 rounded-full border-t-transparent" />
       </div>
     );
   }
@@ -146,15 +261,16 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider
       value={{
         user,
+        isAuthenticated,
         login,
         register,
+        verifyOtp,
+        loginWithGoogle,
         logout,
         updateUser,
         loading,
         error,
-        setError, // Utile pour reset l'erreur depuis les formulaires
-        isAuthenticated,
-        initializing
+        setError,
       }}
     >
       {children}
@@ -162,8 +278,15 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
+/* =========================
+   HOOK
+========================= */
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth doit être utilisé à l'intérieur de AuthProvider");
+
+  if (!context) {
+    throw new Error("useAuth doit être utilisé dans AuthProvider");
+  }
+
   return context;
 };

@@ -6,7 +6,8 @@ import {
   YAxis,
   Tooltip,
   ResponsiveContainer,
-  CartesianGrid,
+  CartesianGrid, 
+  ReferenceArea,
 } from "recharts";
 import { CalendarDaysIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 
@@ -174,6 +175,15 @@ const RevenueChart = React.memo(function RevenueChart({
               />
 
               <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#e5e7eb', strokeWidth: 1, strokeDasharray: '4 4' }} />
+
+              {formattedData.length > 7 && (
+                <ReferenceArea 
+                  x1={formattedData[formattedData.length - 7].name} // 7 jours en arrière (ajuste selon ton returnDelay)
+                  x2={formattedData[formattedData.length - 1].name} // Aujourd'hui
+                  fill="#f3f4f6" 
+                  fillOpacity={0.5} 
+                />
+              )}
 
               {/* L'ordre est important : la courbe affichée derrière doit être en premier */}
               <Area

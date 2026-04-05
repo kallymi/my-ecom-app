@@ -16,6 +16,6 @@ export const CheckoutInput = ({ label, icon, placeholder, value, onChange }) => 
         placeholder={placeholder}
         className="w-full bg-gray-50 border-none rounded-xl md:rounded-2xl py-3.5 md:py-5 pl-12 pr-4 text-xs md:text-sm font-bold focus:ring-2 focus:ring-indigo-600/20 transition-all placeholder:text-black/10"
       />
-    </div>
+    </div  >
   </div>
 );
