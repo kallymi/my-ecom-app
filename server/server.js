@@ -49,7 +49,10 @@ app.use(
         "http://localhost:5173",
         "http://localhost:5174",
         process.env.CLIENT_URL,
-        process.env.ADMIN_URL
+        process.env.ADMIN_URL,
+        "https://cheel-shop.com",
+        "https://www.cheel-shop.com",
+        "https://myadmin.cheel-shop.com"
       ];
 
       if (allowedOrigins.indexOf(origin) !== -1) {
