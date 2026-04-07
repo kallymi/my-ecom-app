@@ -52,7 +52,7 @@ app.use(
         process.env.ADMIN_URL,
         "https://cheel-shop.com",
         "https://www.cheel-shop.com",
-        "https://myadmin.cheel-shop.com"
+        "https://admin.cheel-shop.com"
       ];
 
       if (allowedOrigins.indexOf(origin) !== -1) {
