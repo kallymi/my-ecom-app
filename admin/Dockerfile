@@ -1,22 +1,21 @@
-# 1. Étape de Build (Node)
+# Étape 1 : Build
 FROM node:20-slim AS build
 WORKDIR /app
+
+# CRUCIAL : Déclarer l'argument pour Vite
+ARG VITE_API_URL
+ENV VITE_API_URL=$VITE_API_URL
+
 COPY package*.json ./
-
-
 RUN npm install --legacy-peer-deps
-
-COPY . .
-# On lance la commande build de ton package.json (Vite génère le dossier 'dist')
+COPY . ./
+# Vite va injecter VITE_API_URL pendant cette commande
 RUN npm run build
 
-# 2. Étape de Production (Nginx)
+# Étape 2 : Nginx
 FROM nginx:stable-alpine
-# On copie les fichiers compilés du dossier 'dist' vers Nginx
+# Attention : Avec Vite, le dossier de sortie est souvent 'dist', pas 'build'
 COPY --from=build /app/dist /usr/share/nginx/html
-
-# Configuration pour éviter les erreurs 404 sur React quand on rafraîchit la page
 RUN echo 'server { listen 80; location / { root /usr/share/nginx/html; index index.html; try_files $uri $uri/ /index.html; } }' > /etc/nginx/conf.d/default.conf
-
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
