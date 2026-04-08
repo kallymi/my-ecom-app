@@ -19,6 +19,7 @@ import AdminReturnManagement from "./pages/admin/ReturnManagement";
 
 
 function App() {
+  console.log("Build Force 1");
   return (
     <AuthProvider>
       <Router>
@@ -55,6 +56,7 @@ function App() {
       </Router>
     </AuthProvider>
   );
+  
 }
 
 export default App;

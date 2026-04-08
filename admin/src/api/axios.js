@@ -1,6 +1,7 @@
 import axios from "axios";
 
-export const API_URL = "http://192.168.100.6:5000/api";
+// Utilise la variable d'environnement de Vite, ou l'URL par défaut si elle n'existe pas
+export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const api = axios.create({
   baseURL: API_URL,
