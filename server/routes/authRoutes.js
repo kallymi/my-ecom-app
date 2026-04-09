@@ -16,7 +16,7 @@ const {
   resetPassword
 } = require('../controllers/authController');
 
-const { verifyCSRF } = require('../middleware/authMiddleware');
+const { verifyCSRF } = require('../middleware/csrfMiddleware');
 
 // 🔐 Inscription
 router.post('/register', register);
