@@ -249,6 +249,10 @@ exports.login = async (req, res) => {
       return res.status(401).json({ success: false, message: "Identifiants invalides ou compte non vérifié." });
     }
 
+    if (user.provider !== "local") {
+      return res.status(400).json({ success: false, message: "Veuillez vous connecter avec google ou facebook"});
+    }
+
     if (user.isBlocked || user.isDeleted) {
       return res.status(403).json({ success: false, message: "Accès refusé au compte." });
     }
@@ -270,50 +274,119 @@ exports.login = async (req, res) => {
 ========================= */
 exports.googleAuth = async (req, res) => {
   try {
-    const { token } = req.body; // L'access_token envoyé par le frontend
+    const { token } = req.body; // ID TOKEN (pas access_token)
 
     if (!token) {
       return res.status(400).json({ success: false, message: "Token Google manquant." });
     }
 
-    // Récupération des infos utilisateur via l'API Google
-    const googleRes = await axios.get(
-      `https://www.googleapis.com/oauth2/v3/userinfo?access_token=${token}`
-    );
+    // ✅ Vérification sécurisée
+    const ticket = await googleClient.verifyIdToken({
+      idToken: token,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
 
-    const { email, name, picture, sub } = googleRes.data;
+    const payload = ticket.getPayload();
+    const { email, name, picture, sub } = payload;
+
     const cleanEmail = email.toLowerCase().trim();
 
     let user = await User.findOne({ email: cleanEmail });
 
     if (!user) {
-      // Création automatique si le compte n'existe pas
       user = await User.create({
         name,
         email: cleanEmail,
         googleId: sub,
-        password: crypto.randomBytes(20).toString("hex"), // Mot de passe aléatoire sécurisé
+        provider: "google",
+        password: crypto.randomBytes(20).toString("hex"),
         isVerified: true,
         avatar: picture,
       });
     } else {
       if (user.isBlocked || user.isDeleted) {
-        return res.status(403).json({ success: false, message: "Compte suspendu ou supprimé." });
+        return res.status(403).json({ success: false, message: "Compte suspendu." });
       }
-      // Mise à jour de l'avatar au cas où il a changé sur Google
+
+      if (!user.googleId) {
+        user.googleId = sub;
+        user.provider = "google";
+      }
+
       user.avatar = picture;
       await user.save({ validateBeforeSave: false });
     }
 
-    // Génération des tokens et réponse (Ta fonction utilitaire)
     await sendAuthResponse(user, 200, res, "Connexion Google réussie.");
 
   } catch (error) {
-    console.error("Erreur Google Auth détaillée:", error.response?.data || error.message);
-    res.status(401).json({ success: false, message: "L'authentification Google a échoué." });
+    console.error("Google Auth Error:", error);
+    res.status(401).json({ success: false, message: "Authentification Google échouée." });
   }
 };
 
+
+exports.facebookAuth = async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+
+    if (!accessToken) {
+      return res.status(400).json({ success: false, message: "Token Facebook manquant." });
+    }
+
+    // 🔍 Récupérer les infos utilisateur
+    const fbRes = await axios.get(
+      `https://graph.facebook.com/me?fields=id,name,email,picture&access_token=${accessToken}`
+    );
+
+    const { id, name, email, picture } = fbRes.data;
+
+    if (!email) {
+      return res.status(400).json({
+        success: false,
+        message: "Impossible de récupérer l'email Facebook.",
+      });
+    }
+
+    const cleanEmail = email.toLowerCase().trim();
+
+    let user = await User.findOne({ email: cleanEmail });
+
+    if (!user) {
+      user = await User.create({
+        name,
+        email: cleanEmail,
+        facebookId: id,
+        provider: "facebook",
+        password: crypto.randomBytes(20).toString("hex"),
+        isVerified: true,
+        avatar: picture?.data?.url,
+      });
+    } else {
+      if (user.isBlocked || user.isDeleted) {
+        return res.status(403).json({ success: false, message: "Compte suspendu." });
+      }
+
+      if (!user.facebookId) {
+        user.facebookId = id;
+        user.provider = "facebook";
+      }
+
+      user.avatar = picture?.data?.url;
+      await user.save({ validateBeforeSave: false });
+    }
+
+    await sendAuthResponse(user, 200, res, "Connexion Facebook réussie.");
+
+  } catch (error) {
+    console.error("Facebook Auth Error:", error.response?.data || error.message);
+
+    res.status(401).json({
+      success: false,
+      message: "Authentification Facebook échouée.",
+    });
+  }
+};
 /* =========================
    5. REFRESH TOKEN (Rotation & Sécurité Pro)
 ========================= */

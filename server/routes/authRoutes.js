@@ -8,12 +8,15 @@ const {
   login,
   verifyOtp,
   googleAuth,
+  facebookAuth,
   getMe,
   resendOtp,
   refreshToken,
   forgotPassword,
   resetPassword
 } = require('../controllers/authController');
+
+const { verifyCSRF } = require('../middleware/authMiddleware');
 
 // 🔐 Inscription
 router.post('/register', register);
@@ -28,10 +31,13 @@ router.post('/resend-otp', resendOtp);
 router.post('/login', login);
 
 // 🔁 REFRESH TOKEN (🔥 NOUVEAU)
-router.post('/refresh', refreshToken);
+router.post('/refresh', verifyCSRF, refreshToken);
 
 // 🌐 Authentification Google (Route Publique)
 router.post('/google', googleAuth);
+
+// 🌐 Authentification Facebook (Route Publique)
+router.post('/facebook', facebookAuth );
 
 // 🔑 Mot de passe oublié
 router.post('/forgot-password', forgotPassword);
@@ -40,7 +46,7 @@ router.post('/forgot-password', forgotPassword);
 router.post('/reset-password', resetPassword);
 
 // 🚪 Logout
-router.post('/logout', logout);
+router.post('/logout', verifyCSRF, logout);
 
 // 🔐 Route PROTÉGÉE (nécessite accessToken)
 router.get('/me', protect, getMe);

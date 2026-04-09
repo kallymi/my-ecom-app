@@ -13,9 +13,6 @@ const cookieParser = require("cookie-parser");
 const mongoose = require("mongoose");
 const path = require("path");
 const { Server } = require("socket.io");
-const session = require("express-session");
-
-
 
 // --------------------------
 // ROUTES
@@ -35,77 +32,94 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 
 // --------------------------
-// MIDDLEWARES GLOBAUX (L'ORDRE EST CRITIQUE)
+// TRUST PROXY (OBLIGATOIRE EN PROD)
 // --------------------------
+app.set("trust proxy", 1);
 
-// 1. CORS
+// --------------------------
+// HELMET (SECURITE + OAUTH)
+// --------------------------
 app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true);
-      
-      const allowedOrigins = [
-        "http://localhost:3000",
-        "http://localhost:5173",
-        "http://localhost:5174",
-        process.env.CLIENT_URL,
-        process.env.ADMIN_URL,
-        "https://cheel-shop.com",
-        "https://www.cheel-shop.com",
-        "https://admin.cheel-shop.com"
-      ];
-
-      if (allowedOrigins.indexOf(origin) !== -1) {
-        callback(null, true);
-      } else {
-        console.log("CORS blocked origin:", origin);
-        callback(new Error("Not allowed by CORS"));
-      }
-    },
-    credentials: true, // Indispensable pour que le serveur accepte le cookie
-    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"] // "Authorization" retiré pour forcer l'usage du cookie
+  helmet({
+    crossOriginResourcePolicy: { policy: "cross-origin" },
+    crossOriginOpenerPolicy: { policy: "same-origin-allow-popups" },
   })
 );
 
-// 2. Cookie Parser (Déchiffre les cookies AVANT tout traitement de route)
+// --------------------------
+// CORS CONFIG (ROBUSTE)
+// --------------------------
+const allowedOrigins = new Set([
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "http://localhost:5174",
+  process.env.CLIENT_URL,
+  process.env.ADMIN_URL,
+  "https://cheel-shop.com",
+  "https://www.cheel-shop.com",
+  "https://admin.cheel-shop.com",
+].filter(Boolean));
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+
+      const normalizedOrigin = origin.replace(/\/$/, "");
+
+      if (allowedOrigins.has(normalizedOrigin)) {
+        return callback(null, true);
+      }
+
+      console.log("❌ CORS blocked:", origin);
+      return callback(new Error("Not allowed by CORS"));
+    },
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
+
+// Headers complémentaires (évite bugs CDN + cookies)
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Credentials", "true");
+  res.header("Vary", "Origin");
+  next();
+});
+
+// --------------------------
+// COOKIE PARSER
+// --------------------------
 app.use(cookieParser());
 
-// 3. Helmet & Sécurité
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
-}));
-app.set("trust proxy", 1);
+// --------------------------
+// BODY PARSER
+// --------------------------
+app.use(express.json({ limit: "10kb" }));
+app.use(express.urlencoded({ extended: false, limit: "10kb" }));
 
 // --------------------------
 // SERVEUR HTTP + SOCKET.IO
 // --------------------------
 const server = http.createServer(app);
+
 const io = new Server(server, {
   cors: {
-    origin: [
-      "http://localhost:3000",
-      "http://localhost:5173",
-      "http://localhost:5174",
-      process.env.CLIENT_URL, // URL de ton site client sur Dokploy
-      process.env.ADMIN_URL
-    ],
+    origin: Array.from(allowedOrigins),
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     credentials: true,
   },
 });
 
-// 4. Body Parsers (Lecture des requêtes)
-app.use(express.json({ limit: "10kb" }));
-app.use(express.urlencoded({ extended: false, limit: "10kb" }));
-
 // --------------------------
-// LOGIQUE TEMPS RÉEL
+// SOCKET LOGIC
 // --------------------------
 let connectedUsers = new Set();
+
 io.on("connection", (socket) => {
   connectedUsers.add(socket.id);
   console.log(`🔌 Client connecté: ${socket.id} (Total: ${connectedUsers.size})`);
+
   io.emit("user_count_update", connectedUsers.size);
 
   socket.on("disconnect", () => {
@@ -114,52 +128,48 @@ io.on("connection", (socket) => {
   });
 });
 
-// --------------------------
-// INJECTION SOCKET.IO
-// --------------------------
+// Injection io dans req
 app.use((req, res, next) => {
   req.io = io;
   next();
 });
 
 // --------------------------
-// FICHIERS STATIQUES
+// STATIC FILES
 // --------------------------
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 
 // --------------------------
-// CONNEXION MONGODB
+// MONGODB CONNECTION
 // --------------------------
-mongoose.connect(process.env.MONGO_URI)
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB connecté !");
     // startRevenueTask();
   })
   .catch((err) => {
-    console.error("❌ Erreur MongoDB:", err.message);
+    console.error("❌ MongoDB error:", err.message);
     process.exit(1);
   });
 
 // --------------------------
-// LIMITATION DE DÉBIT (AUTH SEULEMENT)
+// RATE LIMIT (AUTH)
 // --------------------------
 const authLimiter = rateLimit({
-  windowMs: 10 * 60 * 1000, // 10 minutes
-  max: 50, // 50 tentatives
+  windowMs: 10 * 60 * 1000,
+  max: 50,
   standardHeaders: true,
   legacyHeaders: false,
   message: {
-    message: "Trop de tentatives. Réessayez plus tard."
-  }
+    message: "Trop de tentatives. Réessayez plus tard.",
+  },
 });
 
 // --------------------------
 // ROUTES API
 // --------------------------
-// app.use("/api/auth/login", authLimiter);
-// app.use("/api/auth/register", authLimiter);
 app.use("/api/auth", authLimiter, authRoutes);
-// app.use("/api/auth", authRoutes);
 
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
@@ -178,9 +188,8 @@ app.use((req, res) => {
 });
 
 // --------------------------
-// LANCEMENT SERVEUR
+// START SERVER
 // --------------------------
 server.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
-  console.log(`🌐 Accessible sur le réseau à : http://votre-ip-locale:${PORT}`);
 });

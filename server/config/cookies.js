@@ -5,6 +5,7 @@ exports.refreshCookieOptions = {
   secure: isProd,
   // "none" nécessite impérativement "secure: true" (donc HTTPS)
   sameSite: isProd ? "none" : "lax", 
+  domaine: isProd ? ".cheel-shop.com" : "localhost",
   path: "/",
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 jours
 };
@@ -14,5 +15,6 @@ exports.logoutCookieOptions = {
   httpOnly: true,
   secure: isProd,
   sameSite: isProd ? "none" : "lax",
+  domaine: isProd ? ".cheel-shop.com" : "localhost",
   path: "/",
 };
