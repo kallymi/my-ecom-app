@@ -28,43 +28,35 @@ const VerifyOtp = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccess("");
+    setError(""); // On vide les erreurs précédentes
+    setSuccess(""); // On vide les messages de succès précédents
     setLoading(true);
 
     try {
-      // 1. Appel API
       const res = await api.post("/auth/verify-otp", { email, otp });
       
-      console.log("Réponse reçue :", res.data); // Pour débugger la structure
+      // Ton backend renvoie { success: true, accessToken: "...", user: {...} }
+      if (res.data.success) {
+        setSuccess("Compte activé avec succès ! Redirection vers la connexion...");
 
-      // 2. Extraction sécurisée des données
-      // On vérifie si les données sont dans res.data.user ou res.data.data.user
-      const userData = res.data.user || res.data.data?.user;
-      const token = res.data.token || res.data.data?.token;
+        // 1. Stockage (Optionnel si tu veux qu'il se reconnecte manuellement)
+        // Si tu veux qu'il passe par le login, on peut éviter de remplir le contexte ici
+        // localStorage.setItem("token", res.data.accessToken); 
 
-      if (res.data.success || res.status === 200) {
-        setSuccess("Compte activé avec succès !");
-
-        // 3. Mise à jour du contexte et du stockage si les données existent
-        if (userData) {
-          setUser(userData);
-          localStorage.setItem("user", JSON.stringify(userData));
-        }
-        
-        if (token) {
-          localStorage.setItem("token", token);
-        }
-
-        // 4. Redirection après un court délai pour laisser l'utilisateur voir le succès
+        // 2. Redirection vers LOGIN après 2 secondes
         setTimeout(() => {
-          navigate("/"); // Vers l'accueil ou le dashboard
+          navigate("/login"); 
         }, 2000);
       }
     } catch (err) {
       console.error("Erreur Catch:", err.response?.data);
-      // On affiche le message précis du backend s'il existe
-      setError(err.response?.data?.message || "Code OTP incorrect ou expiré");
+      
+      // On s'assure que le message de succès est vide si on a une erreur
+      setSuccess(""); 
+      
+      // On récupère le message d'erreur du backend
+      const errorMessage = err.response?.data?.message || "Code OTP incorrect ou expiré";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
