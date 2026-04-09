@@ -60,23 +60,27 @@ const allowedOrigins = new Set([
   "https://admin.cheel-shop.com",
 ].filter(Boolean));
 
+
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Autorise les requêtes sans origine (comme les apps mobiles ou Postman)
       if (!origin) return callback(null, true);
 
       const normalizedOrigin = origin.replace(/\/$/, "");
 
+      // Vérifie si l'origine est dans ton Set
       if (allowedOrigins.has(normalizedOrigin)) {
         return callback(null, true);
+      } else {
+        // Log précis pour savoir quelle URL est bloquée exactement
+        console.warn("⚠️ CORS bloqué pour l'origine:", origin);
+        return callback(new Error("Non autorisé par CORS"));
       }
-
-      console.log("❌ CORS blocked:", origin);
-      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
   })
 );
 
