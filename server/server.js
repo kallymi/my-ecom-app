@@ -82,7 +82,7 @@ app.use(
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "x-csrf-token"],
   })
 );
 
@@ -90,6 +90,14 @@ app.use(
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Credentials", "true");
   res.header("Vary", "Origin");
+  next();
+});
+
+app.use((req, res, next) => {
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Content-Type, Authorization, X-Requested-With, x-csrf-token"
+  );
   next();
 });
 

@@ -205,12 +205,19 @@ export const AuthProvider = ({ children }) => {
     try {
       setLoading(true);
       setError(null);
-
+      const csrfToken = localStorage.getItem("csrfToken");
+      
       // On utilise ton instance "api" au lieu de "axios" direct
       // On envoie le token reçu de Google au backend
-      const res = await api.post("/auth/google", {
-        token: googleAccessToken
-      });
+      const res = await api.post(
+        "/auth/google",
+        { token: googleAccessToken },
+        {
+          headers: {
+            "x-csrf-token": csrfToken,
+          },
+        }
+      );
 
       const { user, accessToken } = res.data;
       const formattedUser = formatUser(user);

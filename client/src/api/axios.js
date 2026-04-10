@@ -1,21 +1,29 @@
 import axios from "axios";
 
-// Nettoyage de l'URL du .env (enlève les espaces et slashs de fin)
-const rawUrl = (process.env.REACT_APP_API_URL || "http://localhost:5000").trim().replace(/\/+$/, "");
+/* =========================
+   BASE URL CLEAN
+========================= */
+const rawUrl = (process.env.REACT_APP_API_URL || "http://localhost:5000")
+  .trim()
+  .replace(/\/+$/, "");
 
-// On s'assure que l'URL finit par /api
-const BASE_API_URL = rawUrl.endsWith("/api") ? rawUrl : `${rawUrl}/api`;
+const BASE_API_URL = rawUrl.endsWith("/api")
+  ? rawUrl
+  : `${rawUrl}/api`;
 
+/* =========================
+   INSTANCE AXIOS
+========================= */
 const api = axios.create({
   baseURL: BASE_API_URL,
-  withCredentials: true, 
+  withCredentials: true, // 🔥 obligatoire pour cookies (refreshToken)
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 /* =========================
-   REQUEST INTERCEPTOR
+   REFRESH MANAGEMENT
 ========================= */
 let isRefreshing = false;
 let failedQueue = [];
@@ -28,35 +36,46 @@ const processQueue = (error, token = null) => {
   failedQueue = [];
 };
 
+/* =========================
+   REQUEST INTERCEPTOR (AUTH + CSRF)
+========================= */
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem("accessToken");
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+    // 🔐 ACCESS TOKEN
+    const accessToken = localStorage.getItem("accessToken");
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
     }
+
+    // 🛡️ CSRF TOKEN
+    const csrfToken = localStorage.getItem("csrfToken");
+    if (csrfToken) {
+      config.headers["X-CSRF-Token"] = csrfToken;
+    }
+
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-api.interceptors.request.use((config) => {
-  const csrfToken = localStorage.getItem("csrfToken");
-
-  if (csrfToken) {
-    config.headers["X-CSRF-Token"] = csrfToken;
-  }
-
-  return config;
-});
-
+/* =========================
+   RESPONSE INTERCEPTOR (AUTO REFRESH)
+========================= */
 api.interceptors.response.use(
   (response) => response,
+
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // ❌ Si pas de réponse → problème réseau / CORS / serveur down
+    if (!error.response) {
+      console.error("🚨 Network / CORS error:", error);
+      return Promise.reject(error);
+    }
+
+    // 🔄 TOKEN EXPIRE → REFRESH
+    if (error.response.status === 401 && !originalRequest._retry) {
+
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
@@ -71,32 +90,45 @@ api.interceptors.response.use(
       originalRequest._retry = true;
       isRefreshing = true;
 
-      return new Promise((resolve, reject) => {
-        axios.post(`${BASE_API_URL}/auth/refresh`, {}, { withCredentials: true })
-          .then((res) => {
-            const { accessToken } = res.data;
-            localStorage.setItem("accessToken", accessToken);
-            api.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
-            originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-            processQueue(null, accessToken);
-            resolve(api(originalRequest));
-          })
-          .catch((err) => {
-            processQueue(err, null);
-            localStorage.removeItem("accessToken");
-            localStorage.removeItem("user");
-            // Optionnel: window.location.href = "/login";
-            // Si on est sur une page sensible (comme checkout), on redirige
-            if (window.location.pathname === "/checkout") {
-              window.location.href = "/login?message=session_expired";
-            }
-            reject(err);
-          })
-          .finally(() => {
-            isRefreshing = false;
-          });
-      });
+      try {
+        const res = await axios.post(
+          `${BASE_API_URL}/auth/refresh`,
+          {},
+          { withCredentials: true }
+        );
+
+        const { accessToken } = res.data;
+
+        // 🔥 Update storage
+        localStorage.setItem("accessToken", accessToken);
+
+        // 🔥 Update headers globaux
+        api.defaults.headers.common["Authorization"] = `Bearer ${accessToken}`;
+        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+
+        processQueue(null, accessToken);
+
+        return api(originalRequest);
+
+      } catch (err) {
+        processQueue(err, null);
+
+        // ❌ Nettoyage complet
+        localStorage.removeItem("accessToken");
+        localStorage.removeItem("user");
+
+        // Redirection intelligente
+        if (!window.location.pathname.includes("/login")) {
+          window.location.href = "/login?session=expired";
+        }
+
+        return Promise.reject(err);
+
+      } finally {
+        isRefreshing = false;
+      }
     }
+
     return Promise.reject(error);
   }
 );
