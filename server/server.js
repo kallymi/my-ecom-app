@@ -27,6 +27,8 @@ const categoryRoutes = require("./routes/categoryRoutes");
 const userRoutes = require("./routes/userRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
 const startRevenueTask = require("./jobs/revenueJob");
+const csrfRoutes = require("./routes/csrfRoutes");
+
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -174,7 +176,7 @@ const authLimiter = rateLimit({
 // ROUTES API
 // --------------------------
 app.use("/api/auth", authLimiter, authRoutes);
-
+app.use("/api", csrfRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/cart", cartRoutes);
 app.use("/api/admin", adminRoutes);

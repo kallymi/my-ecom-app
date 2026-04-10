@@ -78,6 +78,23 @@ export const AuthProvider = ({ children }) => {
     initAuth();
     return () => { isMounted = false; };
   }, [formatUser]); // formatUser est stable grâce au useCallback
+
+
+  /* =========================
+     CSRF TOKEN
+  ========================= */
+  useEffect(() => {
+    const fetchCSRF = async () => {
+      try {
+        const res = await api.get("/csrf-token");
+        localStorage.setItem("csrfToken", res.data.csrfToken);
+      } catch (err) {
+        console.error("Erreur CSRF:", err);
+      }
+    };
+
+    fetchCSRF();
+  }, []);
   /* =========================
      LOGIN
   ========================= */
