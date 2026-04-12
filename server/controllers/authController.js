@@ -286,6 +286,8 @@ exports.googleAuth = async (req, res) => {
       { headers: { Authorization: `Bearer ${token}` } }
     );
 
+    console.log("✅ Payload Google:", payload);
+
     const { email, name, picture, sub } = payload;
 
     if (!email) {

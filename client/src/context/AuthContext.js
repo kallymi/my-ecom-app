@@ -18,6 +18,19 @@ const BASE_API_URL = (
   ? (process.env.REACT_APP_API_URL || "http://localhost:5000").trim().replace(/\/+$/, "")
   : `${(process.env.REACT_APP_API_URL || "http://localhost:5000").trim().replace(/\/+$/, "")}/api`;
 
+// Fonction utilitaire — à mettre AVANT le Provider
+const fetchAndStoreCsrf = async () => {
+  const res = await axios.get(`${BASE_API_URL}/csrf-token`, {
+    withCredentials: true,
+  });
+  const token = res.data.csrfToken;
+  if (token) {
+    localStorage.setItem("csrfToken", token);
+    api.defaults.headers.common["x-csrf-token"] = token;
+  }
+  return token;
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser]               = useState(null);
   const [initializing, setInitializing] = useState(true);
@@ -180,12 +193,21 @@ export const AuthProvider = ({ children }) => {
   /* =========================
      LOGIN WITH GOOGLE
   ========================= */
+  // Dans loginWithGoogle — toujours re-fetch si token absent
   const loginWithGoogle = async (googleAccessToken) => {
     try {
       setLoading(true);
       setError(null);
 
-      const csrfToken = localStorage.getItem("csrfToken");
+      // ✅ Si pas de CSRF token, on le re-fetch avant d'appeler Google
+      let csrfToken = localStorage.getItem("csrfToken");
+      if (!csrfToken) {
+        csrfToken = await fetchAndStoreCsrf();
+      }
+
+      if (!csrfToken) {
+        throw new Error("Impossible d'obtenir le token CSRF");
+      }
 
       const res = await api.post(
         "/auth/google",
@@ -199,6 +221,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem("user", JSON.stringify(formattedUser));
       setUser(formattedUser);
       return res.data;
+
     } catch (err) {
       const message = err.response?.data?.message || "Échec connexion Google";
       setError(message);
@@ -207,7 +230,6 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   };
-
   /* =========================
      UPDATE USER
   ========================= */
