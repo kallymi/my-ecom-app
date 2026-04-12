@@ -39,24 +39,21 @@ const processQueue = (error, token = null) => {
 /* =========================
    REQUEST INTERCEPTOR (AUTH + CSRF)
 ========================= */
-api.interceptors.request.use(
-  (config) => {
-    // 🔐 ACCESS TOKEN
-    const accessToken = localStorage.getItem("accessToken");
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
+// REQUEST INTERCEPTOR
+api.interceptors.request.use((config) => {
+  const accessToken = localStorage.getItem("accessToken");
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
 
-    // 🛡️ CSRF TOKEN
-    const csrfToken = localStorage.getItem("csrfToken");
-    if (csrfToken) {
-      config.headers["X-CSRF-Token"] = csrfToken;
-    }
+  // ✅ Nom du header unifié (minuscules, cohérent avec backend)
+  const csrfToken = localStorage.getItem("csrfToken");
+  if (csrfToken) {
+    config.headers["x-csrf-token"] = csrfToken; // ← tout en minuscules
+  }
 
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
+  return config;
+});
 
 /* =========================
    RESPONSE INTERCEPTOR (AUTO REFRESH)

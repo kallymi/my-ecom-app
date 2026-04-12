@@ -274,23 +274,25 @@ exports.login = async (req, res) => {
 ========================= */
 exports.googleAuth = async (req, res) => {
   try {
-    const { token } = req.body; // ID TOKEN (pas access_token)
+    const { token } = req.body;
 
     if (!token) {
       return res.status(400).json({ success: false, message: "Token Google manquant." });
     }
 
-    // ✅ Vérification sécurisée
-    const ticket = await googleClient.verifyIdToken({
-      idToken: token,
-      audience: process.env.GOOGLE_CLIENT_ID,
-    });
+    // ✅ On appelle l'API Google avec l'access_token pour récupérer le profil
+    const { data: payload } = await axios.get(
+      "https://www.googleapis.com/oauth2/v3/userinfo",
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
 
-    const payload = ticket.getPayload();
     const { email, name, picture, sub } = payload;
 
-    const cleanEmail = email.toLowerCase().trim();
+    if (!email) {
+      return res.status(400).json({ success: false, message: "Email Google introuvable." });
+    }
 
+    const cleanEmail = email.toLowerCase().trim();
     let user = await User.findOne({ email: cleanEmail });
 
     if (!user) {
@@ -307,12 +309,10 @@ exports.googleAuth = async (req, res) => {
       if (user.isBlocked || user.isDeleted) {
         return res.status(403).json({ success: false, message: "Compte suspendu." });
       }
-
       if (!user.googleId) {
         user.googleId = sub;
         user.provider = "google";
       }
-
       user.avatar = picture;
       await user.save({ validateBeforeSave: false });
     }
@@ -320,7 +320,7 @@ exports.googleAuth = async (req, res) => {
     await sendAuthResponse(user, 200, res, "Connexion Google réussie.");
 
   } catch (error) {
-    console.error("Google Auth Error:", error);
+    console.error("Google Auth Error:", error.response?.data || error.message);
     res.status(401).json({ success: false, message: "Authentification Google échouée." });
   }
 };
