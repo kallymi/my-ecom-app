@@ -1,28 +1,24 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { 
-  ArrowRight, Loader2, AlertCircle, 
-  Eye, EyeOff, ChevronLeft, Mail, Lock 
+import {
+  ArrowRight, Loader2, AlertCircle,
+  Eye, EyeOff, Mail, Lock
 } from "lucide-react";
-
 import GoogleLoginButton from "./GoogleLoginButton";
+
 const Login = () => {
   const navigate = useNavigate();
   const { login, error: authError, setError: setAuthError, isAuthenticated } = useAuth();
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail]               = useState("");
+  const [password, setPassword]         = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [localLoading, setLocalLoading] = useState(false);
-  const [localError, setLocalError] = useState("");
+  const [localError, setLocalError]     = useState("");
 
-  // Si l'utilisateur est déjà connecté, on le redirige immédiatement
   useEffect(() => {
-    if (isAuthenticated) {
-      navigate("/");
-    }
-    // Nettoyer les erreurs d'auth précédentes quand on arrive sur la page
+    if (isAuthenticated) navigate("/");
     return () => setAuthError(null);
   }, [isAuthenticated, navigate, setAuthError]);
 
@@ -30,16 +26,10 @@ const Login = () => {
     e.preventDefault();
     setLocalError("");
     setLocalLoading(true);
-
     try {
-      // Le trim() est crucial pour l'expérience mobile
-      await login({ 
-        email: email.toLowerCase().trim(), 
-        password 
-      });
+      await login({ email: email.toLowerCase().trim(), password });
       navigate("/");
     } catch (err) {
-      // On affiche l'erreur du serveur ou un message générique
       setLocalError(err.message || "Impossible de se connecter.");
     } finally {
       setLocalLoading(false);
@@ -47,145 +37,157 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] flex flex-col md:flex-row overflow-hidden font-sans">
-      
-      {/* SECTION GAUCHE : Branding (Visible Desktop) */}
-      <div className="hidden md:flex md:w-[40%] bg-black relative p-16 flex-col justify-between overflow-hidden">
-        <div className="absolute top-[-10%] right-[-10%] w-96 h-96 bg-indigo-600/20 blur-[120px] rounded-full" />
-        
-        <Link to="/" className="relative z-10 flex items-center gap-2 text-white/60 hover:text-white transition-all group">
-          <ChevronLeft size={18} className="group-hover:-translate-x-1 transition-transform" />
-          <span className="text-[11px] font-black uppercase tracking-[0.2em]">Retour boutique</span>
-        </Link>
+    <div className="min-h-screen bg-[#f8f9ff] flex items-center justify-center p-6 relative overflow-hidden">
 
-        <div className="relative z-10">
-          <h2 className="text-[2.5vw] leading-[0.85] font-[1000] uppercase tracking-tighter text-white italic">
-            Cheel<span className="text-indigo-500 not-italic">.</span><br />
-            Espace<br />Client
-          </h2>
-          <p className="mt-8 text-white/40 text-[11px] font-bold uppercase tracking-[0.3em] max-w-xs leading-relaxed">
-            Gérez et suivez vos commandes en un seul endroit. <br/>
-            <span className="text-indigo-500">Votre partenaire digital.</span>
+      {/* Orbes de fond */}
+      <div className="absolute top-[-15%] right-[-10%] w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-[-15%] left-[-10%] w-[400px] h-[400px] bg-indigo-500/[0.07] rounded-full blur-3xl pointer-events-none" />
+
+      {/* Grille décorative */}
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `
+            linear-gradient(rgba(91,110,245,0.04) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(91,110,245,0.04) 1px, transparent 1px)
+          `,
+          backgroundSize: "40px 40px",
+        }}
+      />
+
+      {/* Carte centrale */}
+      <div className="relative z-10 w-full max-w-[420px] bg-white rounded-3xl p-9 shadow-[0_4px_6px_rgba(0,0,0,0.04),0_20px_40px_rgba(91,110,245,0.08)] border border-indigo-500/10">
+
+        {/* Brand */}
+        <div className="flex items-center gap-3 mb-8">
+          <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shrink-0">
+            <svg width="26" height="26" viewBox="0 0 28 28" fill="none">
+              <path d="M5 10 Q5 4 14 4 Q23 4 23 10" stroke="#5B6EF5" strokeWidth="2.5" strokeLinecap="round" fill="none"/>
+              <rect x="3" y="10" width="22" height="14" rx="3" fill="white"/>
+              <circle cx="9" cy="26" r="2" fill="#5B6EF5"/>
+              <circle cx="19" cy="26" r="2" fill="#5B6EF5"/>
+              <text x="13" y="20" textAnchor="middle" fontFamily="Georgia,serif" fontSize="7" fontWeight="700" fill="#111">cheel</text>
+              <path d="M7 22 Q13 25 19 22" stroke="#5B6EF5" strokeWidth="1.2" strokeLinecap="round" fill="none"/>
+            </svg>
+          </div>
+          <span className="text-lg font-bold text-black tracking-wide" style={{ fontFamily: "Georgia, serif" }}>
+            cheel<span className="text-indigo-500">.</span>
+          </span>
+        </div>
+
+        {/* Titre */}
+        <div className="mb-7">
+          <h1 className="text-2xl font-bold text-black mb-1" style={{ fontFamily: "Georgia, serif", letterSpacing: "-0.5px" }}>
+            Bon retour
+          </h1>
+          <p className="text-sm text-gray-400">
+            Connectez-vous à votre espace client
           </p>
         </div>
 
-        <div className="relative z-10 text-white/20 text-[9px] font-black tracking-widest uppercase">
-          © 2026 Cheel — Chad Digital Excellence
-        </div>
-      </div>
+        {/* Erreur */}
+        {(localError || authError) && (
+          <div className="flex items-center gap-3 bg-rose-50 border border-rose-200 text-rose-600 rounded-xl p-3 mb-5 animate-in fade-in zoom-in duration-200">
+            <AlertCircle size={16} className="shrink-0" />
+            <p className="text-xs font-semibold">{localError || authError}</p>
+          </div>
+        )}
 
-      {/* SECTION DROITE : Formulaire */}
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-[440px]">
-          
-          <div className="mb-10 text-center md:text-left">
-            <h1 className="text-4xl font-[1000] uppercase tracking-tighter italic text-black mb-2">
-              Connexion<span className="text-indigo-600">.</span>
-            </h1>
-            <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">Ravis de vous revoir parmi nous</p>
+        {/* Formulaire */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+
+          {/* Email */}
+          <div className="space-y-2">
+            <label className="block text-[11px] font-semibold text-gray-600 uppercase tracking-widest">
+              Adresse email
+            </label>
+            <div className="relative group">
+              <Mail
+                size={16}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none"
+              />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="nom@exemple.com"
+                required
+                className="w-full bg-gray-50 border-[1.5px] border-gray-200 rounded-xl py-3.5 pl-11 pr-4 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 transition-all"
+              />
+            </div>
           </div>
 
-          {/* Affichage des erreurs (locales ou globales) */}
-          {(localError || authError) && (
-            <div className="mb-8 flex items-center gap-4 bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-2xl animate-in fade-in zoom-in duration-300">
-              <AlertCircle size={20} className="shrink-0" />
-              <p className="text-[10px] font-black uppercase tracking-widest leading-tight">
-                {localError || authError}
-              </p>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            
-            {/* Champ Email */}
-            <div className="space-y-2">
-              <label className="text-[10px] font-black uppercase tracking-widest text-black ml-1">
-                Adresse Email
+          {/* Mot de passe */}
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <label className="text-[11px] font-semibold text-gray-600 uppercase tracking-widest">
+                Mot de passe
               </label>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors">
-                  <Mail size={18} />
-                </div>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white border-2 border-gray-100 py-4 pl-12 pr-4 rounded-[1.2rem] text-sm font-bold placeholder:text-gray-300 focus:border-black focus:ring-0 outline-none transition-all shadow-sm group-hover:border-gray-200"
-                  placeholder="nom@exemple.com"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* Champ Mot de Passe */}
-            <div className="space-y-2">
-              <div className="flex justify-between items-center ml-1">
-                <label className="text-[10px] font-black uppercase tracking-widest text-black">
-                  Mot de passe
-                </label>
-                <Link to="/forgot-password" className=" text-[10px] font-black uppercase text-indigo-600 hover:text-black transition-colors">
-                  Oublié ?
-                </Link>
-              </div>
-              <div className="relative group">
-                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-600 transition-colors">
-                  <Lock size={18} />
-                </div>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white border-2 border-gray-100 py-4 pl-12 pr-12 rounded-[1.2rem] text-sm font-bold placeholder:text-gray-300 focus:border-black focus:ring-0 outline-none transition-all shadow-sm group-hover:border-gray-200"
-                  placeholder="••••••••"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-black transition-colors"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
-              </div>
-            </div>
-
-            {/* Bouton de Soumission */}
-            <div className="pt-4">
-              <button
-                type="submit"
-                disabled={localLoading}
-                className="w-full bg-black text-white py-5 rounded-[1.5rem] font-black uppercase text-[11px] tracking-[0.25em] shadow-xl shadow-black/10 hover:bg-indigo-600 hover:shadow-indigo-500/30 active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:bg-gray-200 disabled:cursor-not-allowed"
+              <Link
+                to="/forgot-password"
+                className="text-[11px] font-semibold text-indigo-500 hover:text-indigo-700 transition-colors"
               >
-                {localLoading ? (
-                  <Loader2 className="animate-spin" size={20} />
-                ) : (
-                  <>
-                    Se connecter
-                    <ArrowRight size={18} />
-                  </>
-                )}
+                Oublié ?
+              </Link>
+            </div>
+            <div className="relative group">
+              <Lock
+                size={16}
+                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-indigo-500 transition-colors pointer-events-none"
+              />
+              <input
+                type={showPassword ? "text" : "password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                required
+                className="w-full bg-gray-50 border-[1.5px] border-gray-200 rounded-xl py-3.5 pl-11 pr-12 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/10 transition-all"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors"
+              >
+                {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
               </button>
             </div>
-          </form>
-          
-          <div className="relative my-8">
-            <div className="absolute inset-0 flex items-center"><span className="w-full border-t border-gray-200"></span></div>
-            <div className="relative flex justify-center text-xs uppercase"><span className="bg-[#F8FAFC] px-2 text-gray-400 font-bold">Ou</span></div>
           </div>
 
-          <GoogleLoginButton />
+          {/* Bouton submit */}
+          <button
+            type="submit"
+            disabled={localLoading}
+            className="w-full mt-2 bg-indigo-500 hover:bg-indigo-600 active:scale-[0.98] disabled:bg-gray-200 disabled:cursor-not-allowed text-white py-3.5 rounded-xl text-[13px] font-bold tracking-wide flex items-center justify-center gap-2 transition-all"
+          >
+            {localLoading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <>
+                Se connecter
+                <ArrowRight size={16} />
+              </>
+            )}
+          </button>
+        </form>
 
-          {/* Footer */}
-          <div className="mt-10 text-center">
-            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-[0.2em]">
-              Pas encore de compte ?{" "}
-              <Link to="/register" className="text-black hover:text-indigo-600 border-b-2 border-black/10 hover:border-indigo-600 transition-all ml-1 pb-0.5">
-                Créer un profil
-              </Link>
-            </p>
-          </div>
-
+        {/* Séparateur */}
+        <div className="flex items-center gap-3 my-6">
+          <span className="flex-1 h-px bg-gray-100" />
+          <span className="text-[11px] text-gray-400 uppercase tracking-widest">ou</span>
+          <span className="flex-1 h-px bg-gray-100" />
         </div>
+
+        {/* Google */}
+        <GoogleLoginButton />
+
+        {/* Inscription */}
+        <p className="text-center text-xs text-gray-400 mt-6">
+          Pas encore de compte ?{" "}
+          <Link to="/register" className="text-indigo-500 font-bold hover:text-indigo-700 transition-colors">
+            Créer un profil
+          </Link>
+        </p>
+
       </div>
     </div>
   );
